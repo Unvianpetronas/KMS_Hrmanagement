@@ -6,6 +6,8 @@ import com.hrkms.service.AuthService;
 import com.hrkms.service.KnowledgeItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class KnowledgeItemController {
+
+    private static final Logger logger = LoggerFactory.getLogger(KnowledgeItemController.class);
 
     private final KnowledgeItemService service;
     private final AuthService authService;
@@ -85,7 +89,9 @@ public class KnowledgeItemController {
         if (req.getAuthor() == null || req.getAuthor().isBlank()) {
             req.setAuthor(user.getFullName());
         }
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.createItem(req));
+        DTO.ItemResponse created = service.createItem(req);
+        logger.info("Item created successfully: id: {} title: {} by: {}", created.getId(), created.getTitle(), user.getUsername());
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/items/{id}")
@@ -93,16 +99,19 @@ public class KnowledgeItemController {
             @PathVariable String id,
             @Valid @RequestBody com.hrkms.dto.DTO.CreateItemRequest req,
             @RequestHeader("Authorization") String token) {
-        authService.requireManager(token);
-        return ResponseEntity.ok(service.updateItem(id, req));
+        JwtUser user = authService.requireManager(token);
+        DTO.ItemResponse updated = service.updateItem(id, req);
+        logger.info("Item updated successfully: id: {} by: {}", id, user.getUsername());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/items/{id}")
     public ResponseEntity<Map<String, String>> deleteItem(
             @PathVariable String id,
             @RequestHeader("Authorization") String token) {
-        authService.requireManager(token);
+        JwtUser user = authService.requireManager(token);
         service.deleteItem(id);
+        logger.info("Item deleted successfully: id: {} by: {}", id, user.getUsername());
         return ResponseEntity.ok(Map.of("message", "Đã xóa bài tri thức " + id));
     }
 
@@ -110,15 +119,19 @@ public class KnowledgeItemController {
     public ResponseEntity<com.hrkms.dto.DTO.ItemResponse> publishItem(
             @PathVariable String id,
             @RequestHeader("Authorization") String token) {
-        authService.requireManager(token);
-        return ResponseEntity.ok(service.publishItem(id));
+        JwtUser user = authService.requireManager(token);
+        DTO.ItemResponse result = service.publishItem(id);
+        logger.info("Item published successfully: id: {} by: {}", id, user.getUsername());
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping("/items/{id}/archive")
     public ResponseEntity<DTO.ItemResponse> archiveItem(
             @PathVariable String id,
             @RequestHeader("Authorization") String token) {
-        authService.requireAdmin(token);
-        return ResponseEntity.ok(service.archiveItem(id));
+        JwtUser user = authService.requireAdmin(token);
+        DTO.ItemResponse result = service.archiveItem(id);
+        logger.info("Item archived successfully: id: {} by: {}", id, user.getUsername());
+        return ResponseEntity.ok(result);
     }
 }

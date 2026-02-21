@@ -7,6 +7,8 @@ import com.hrkms.model.*;
 import com.hrkms.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AuthService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+
     private final UserRepository userRepo;
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -28,14 +32,20 @@ public class AuthService {
     // ================================================================
 
     public com.hrkms.dto.AuthDTO.LoginResponse login(com.hrkms.dto.AuthDTO.LoginRequest req) {
-        User user = userRepo.findByUsername(req.getUsername())
-                .orElseThrow(() -> new RuntimeException("Tên đăng nhập không tồn tại"));
+        User user = userRepo.findByUsername(req.getUsername()).orElse(null);
+
+        if (user == null) {
+            logger.warn("Login failed for username: {} with error: {}", req.getUsername(), "user not found");
+            throw new RuntimeException("Tên đăng nhập không tồn tại");
+        }
 
         if (!user.getActive()) {
+            logger.warn("Login failed for username: {} with error: {}", req.getUsername(), "account disabled");
             throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
         }
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
+            logger.warn("Login failed for username: {} with error: {}", req.getUsername(), "wrong password");
             throw new RuntimeException("Mật khẩu không đúng");
         }
 
@@ -50,6 +60,8 @@ public class AuthService {
                 user.getRole().name(),
                 user.getFullName()
         );
+
+        logger.info("Login successful for username: {} with role: {}", user.getUsername(), user.getRole());
 
         return com.hrkms.dto.AuthDTO.LoginResponse.builder()
                 .userId(user.getId())
@@ -66,23 +78,34 @@ public class AuthService {
      * Logout
      */
     public void logout(String token) {
+        // JWT is stateless — actual invalidation is handled client-side
+        try {
+            JwtUser u = validateToken(token);
+            logger.info("Logout successful for username: {}", u.getUsername());
+        } catch (Exception ignored) {
+            // token already invalid — still fine to log out
+        }
     }
 
     public JwtUser validateToken(String token) {
         if (token == null || token.isBlank()) {
+            logger.warn("Token validation failed with error: {}", "empty token");
             throw new RuntimeException("Token không hợp lệ");
         }
         String cleanToken = token.startsWith("Bearer ") ? token.substring(7) : token;
 
-        // Parse JWT
-        Claims claims = jwtService.parseToken(cleanToken);
-
-        return JwtUser.builder()
-                .userId(jwtService.getUserId(claims))
-                .username(jwtService.getUsername(claims))
-                .role(jwtService.getRole(claims))
-                .fullName(jwtService.getFullName(claims))
-                .build();
+        try {
+            Claims claims = jwtService.parseToken(cleanToken);
+            return JwtUser.builder()
+                    .userId(jwtService.getUserId(claims))
+                    .username(jwtService.getUsername(claims))
+                    .role(jwtService.getRole(claims))
+                    .fullName(jwtService.getFullName(claims))
+                    .build();
+        } catch (RuntimeException ex) {
+            logger.warn("Token validation failed with error: {}", ex.getMessage());
+            throw ex;
+        }
     }
 
     /**
@@ -91,6 +114,7 @@ public class AuthService {
     public JwtUser requireManager(String token) {
         JwtUser user = validateToken(token);
         if (!user.canManageItems()) {
+            logger.warn("Access denied for username: {} with role: {} - required: {}", user.getUsername(), user.getRole(), "MANAGER/ADMIN");
             throw new RuntimeException("Bạn không có quyền thực hiện thao tác này. Yêu cầu role: ADMIN hoặc MANAGER");
         }
         return user;
@@ -99,6 +123,7 @@ public class AuthService {
     public JwtUser requireAdmin(String token) {
         JwtUser user = validateToken(token);
         if (!user.canManageUsers()) {
+            logger.warn("Access denied for username: {} with role: {} - required: {}", user.getUsername(), user.getRole(), "ADMIN");
             throw new RuntimeException("Chỉ Admin mới có quyền quản lý tài khoản");
         }
         return user;
@@ -132,7 +157,9 @@ public class AuthService {
                 .createdDate(LocalDate.now())
                 .build();
 
-        return toResponse(userRepo.save(user));
+        AuthDTO.UserResponse result = toResponse(userRepo.save(user));
+        logger.info("User created successfully: username: {} with role: {}", req.getUsername(), role);
+        return result;
     }
 
     @Transactional
@@ -152,7 +179,9 @@ public class AuthService {
             }
         }
 
-        return toResponse(userRepo.save(user));
+        AuthDTO.UserResponse result = toResponse(userRepo.save(user));
+        logger.info("User updated successfully: id: {} username: {}", id, user.getUsername());
+        return result;
     }
 
     @Transactional
@@ -162,6 +191,7 @@ public class AuthService {
 
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepo.save(user);
+        logger.info("Password changed successfully for userId: {}", userId);
     }
 
     @Transactional
@@ -175,6 +205,7 @@ public class AuthService {
             }
         }
         userRepo.deleteById(id);
+        logger.info("User deleted successfully: id: {} username: {}", id, user.getUsername());
     }
 
     public List<com.hrkms.dto.AuthDTO.UserResponse> getAllUsers() {
