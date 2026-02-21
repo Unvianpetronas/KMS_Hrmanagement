@@ -32,46 +32,46 @@ public class AuthService {
     // ================================================================
 
     public com.hrkms.dto.AuthDTO.LoginResponse login(com.hrkms.dto.AuthDTO.LoginRequest req) {
-        User user = userRepo.findByUsername(req.getUsername()).orElse(null);
+        try {
+            User user = userRepo.findByUsername(req.getUsername()).orElse(null);
 
-        if (user == null) {
-            logger.warn("Login failed for username: {} with error: {}", req.getUsername(), "user not found");
-            throw new RuntimeException("Tên đăng nhập không tồn tại");
+            if (user == null) {
+                throw new RuntimeException("Tên đăng nhập không tồn tại");
+            }
+
+            if (!user.getActive()) {
+                throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
+            }
+
+            if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
+                throw new RuntimeException("Mật khẩu không đúng");
+            }
+
+            user.setLastLogin(LocalDate.now());
+            userRepo.save(user);
+
+            String token = jwtService.generateToken(
+                    user.getId(),
+                    user.getUsername(),
+                    user.getRole().name(),
+                    user.getFullName()
+            );
+
+            logger.info("Login successful for username: {} with role: {}", user.getUsername(), user.getRole());
+
+            return com.hrkms.dto.AuthDTO.LoginResponse.builder()
+                    .userId(user.getId())
+                    .username(user.getUsername())
+                    .fullName(user.getFullName())
+                    .email(user.getEmail())
+                    .department(user.getDepartment())
+                    .role(user.getRole().name())
+                    .token(token)
+                    .build();
+        } catch (Exception e) {
+            logger.error("Login failed for username: {} with error: {}", req.getUsername(), e.getMessage());
+            throw new RuntimeException(e.getMessage());
         }
-
-        if (!user.getActive()) {
-            logger.warn("Login failed for username: {} with error: {}", req.getUsername(), "account disabled");
-            throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
-        }
-
-        if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
-            logger.warn("Login failed for username: {} with error: {}", req.getUsername(), "wrong password");
-            throw new RuntimeException("Mật khẩu không đúng");
-        }
-
-        // Update last login
-        user.setLastLogin(LocalDate.now());
-        userRepo.save(user);
-
-        // Generate JWT — embed tất cả thông tin cần thiết vào token
-        String token = jwtService.generateToken(
-                user.getId(),
-                user.getUsername(),
-                user.getRole().name(),
-                user.getFullName()
-        );
-
-        logger.info("Login successful for username: {} with role: {}", user.getUsername(), user.getRole());
-
-        return com.hrkms.dto.AuthDTO.LoginResponse.builder()
-                .userId(user.getId())
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .email(user.getEmail())
-                .department(user.getDepartment())
-                .role(user.getRole().name())
-                .token(token)
-                .build();
     }
 
     /**
