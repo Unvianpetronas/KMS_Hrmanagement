@@ -24,10 +24,13 @@ public class KnowledgeItem {
     @Column(nullable = false, length = 20)
     private String type; // Policy, FAQ, Checklist
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "item_tags", joinColumns = @JoinColumn(name = "item_id"))
-    @Column(name = "tag")
-    private List<String> tags = new ArrayList<>();
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "item_tags",
+            joinColumns = @JoinColumn(name = "item_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private List<Tag> tags = new ArrayList<>();
 
     @Column(length = 100)
     private String audience;
@@ -35,7 +38,7 @@ public class KnowledgeItem {
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "item_related", joinColumns = @JoinColumn(name = "item_id"))
     @Column(name = "related_id")
     private List<String> relatedItems = new ArrayList<>();
@@ -47,7 +50,7 @@ public class KnowledgeItem {
 
     @Column(length = 20)
     @Builder.Default
-    private String status = "Draft"; // Draft, Published, Archived
+    private String status = "Draft"; // Draft, Published, Archived, Suggested
 
     @Builder.Default
     private Double rating = 0.0;
@@ -58,4 +61,11 @@ public class KnowledgeItem {
     @OneToMany(mappedBy = "knowledgeItem", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<Comment> comments = new ArrayList<>();
+
+    @Column(name = "view_count")
+    @Builder.Default
+    private Integer viewCount = 0;
+
+    @Column(name = "suggested_by", length = 100)
+    private String suggestedBy;
 }

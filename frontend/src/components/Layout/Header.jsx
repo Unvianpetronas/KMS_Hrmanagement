@@ -2,7 +2,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ROLE_COLORS } from '../../services/constants';
 
 export default function Header({ currentView, onNavigate }) {
-  const { user, logout, isAdmin, isManager } = useAuth();
+  const { user, logout, isAdmin, isManager, isLoggedIn } = useAuth();
 
   return (
     <header className="glass" style={{ position: 'sticky', top: 0, zIndex: 100, borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none' }}>
@@ -27,6 +27,16 @@ export default function Header({ currentView, onNavigate }) {
               ＋ Tạo mới
             </button>
           )}
+          {!isManager && (
+            <button className={`btn-ghost ${currentView === 'create' ? 'active' : ''}`} onClick={() => onNavigate('create')}
+              style={currentView === 'create' ? { background: 'rgba(168,85,247,0.1)', color: '#c084fc', borderColor: 'rgba(168,85,247,0.3)' } : {}}>
+              💡 Đề xuất
+            </button>
+          )}
+          <button className={`btn-ghost ${currentView === 'chat' ? 'active' : ''}`} onClick={() => onNavigate('chat')}
+            style={currentView === 'chat' ? { background: 'rgba(20,184,166,0.1)', color: '#2dd4bf', borderColor: 'rgba(20,184,166,0.3)' } : {}}>
+            🤖 AI Chat
+          </button>
           {isAdmin && (
             <button className={`btn-ghost ${currentView === 'admin' ? 'active' : ''}`} onClick={() => onNavigate('admin')}
               style={currentView === 'admin' ? { background: 'rgba(239,68,68,0.1)', color: '#f87171', borderColor: 'rgba(239,68,68,0.3)' } : {}}>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { authAPI } from '../../services/api';
+import { authAPI, tagsAPI, itemsAPI } from '../../services/api';
 import { useToast } from '../UI/Toast';
-import { ROLE_COLORS } from '../../services/constants';
+import { ROLE_COLORS, TAG_COLORS } from '../../services/constants';
 
 export default function AdminPanel() {
   const { notify } = useToast();
@@ -15,6 +15,47 @@ export default function AdminPanel() {
   // Change password form
   const [changePw, setChangePw] = useState({ userId: '', newPassword: '' });
 
+  // Tags state
+  const [tags, setTags] = useState([]);
+  const [newTag, setNewTag] = useState({ name: '', description: '' });
+  const [editingTag, setEditingTag] = useState(null); // { originalName, name, description }
+
+  const fetchTags = async () => {
+    try {
+      const data = await tagsAPI.getAll();
+      setTags(data);
+    } catch (err) { notify(err.message, 'error'); }
+  };
+
+  const handleCreateTag = async () => {
+    if (!newTag.name.trim()) { notify('Tên tag không được để trống', 'error'); return; }
+    try {
+      await tagsAPI.create(newTag);
+      notify(`Tạo tag "${newTag.name}" thành công!`);
+      setNewTag({ name: '', description: '' });
+      fetchTags();
+    } catch (err) { notify(err.message, 'error'); }
+  };
+
+  const handleUpdateTag = async () => {
+    if (!editingTag.name.trim()) { notify('Tên tag không được để trống', 'error'); return; }
+    try {
+      await tagsAPI.update(editingTag.originalName, { name: editingTag.name, description: editingTag.description });
+      notify(`Cập nhật tag thành công!`);
+      setEditingTag(null);
+      fetchTags();
+    } catch (err) { notify(err.message, 'error'); }
+  };
+
+  const handleDeleteTag = async (tagName) => {
+    if (!window.confirm(`Xóa tag "${tagName}"?`)) return;
+    try {
+      await tagsAPI.delete(tagName);
+      notify(`Đã xóa tag "${tagName}"`);
+      fetchTags();
+    } catch (err) { notify(err.message, 'error'); }
+  };
+
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -24,7 +65,7 @@ export default function AdminPanel() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => { fetchUsers(); fetchTags(); }, []);
 
   // Toggle active status
   const toggleActive = async (user) => {
@@ -73,10 +114,45 @@ export default function AdminPanel() {
     } catch (err) { notify(err.message, 'error'); }
   };
 
+  // Bulk archive state
+  const [staleItems, setStaleItems] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [staleLoading, setStaleLoading] = useState(false);
+
+  const fetchStaleItems = async () => {
+    setStaleLoading(true);
+    try {
+      const data = await itemsAPI.getStale(12);
+      setStaleItems(data);
+      setSelectedIds(new Set());
+    } catch (err) { notify(err.message, 'error'); }
+    finally { setStaleLoading(false); }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkArchive = async () => {
+    if (selectedIds.size === 0) { notify('Chọn ít nhất 1 bài', 'error'); return; }
+    if (!window.confirm(`Archive ${selectedIds.size} bài đã chọn?`)) return;
+    try {
+      await itemsAPI.bulkArchive([...selectedIds]);
+      notify(`Đã archive ${selectedIds.size} bài 📦`);
+      fetchStaleItems();
+    } catch (err) { notify(err.message, 'error'); }
+  };
+
   const TABS = [
     { key: 'users', label: '👥 Danh sách Users' },
     { key: 'adduser', label: '➕ Tạo User' },
     { key: 'changepass', label: '🔑 Đổi Password' },
+    { key: 'tags', label: '🏷 Quản lý Tags' },
+    { key: 'bulkarchive', label: '📦 Bulk Archive' },
   ];
 
   return (
@@ -187,6 +263,153 @@ export default function AdminPanel() {
           <div style={{ gridColumn: '1/-1' }}>
             <button className="btn-primary" onClick={handleCreateUser}>Tạo User</button>
           </div>
+        </div>
+      )}
+
+      {/* ========== TAGS ========== */}
+      {tab === 'tags' && (
+        <div>
+          {/* Create tag form */}
+          <div className="glass-light" style={{ borderRadius: 12, padding: 20, marginBottom: 20 }}>
+            <h4 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>Tạo tag mới</h4>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+              <div style={{ flex: '0 0 160px' }}>
+                <label className="label">Tên tag *</label>
+                <input className="input" value={newTag.name}
+                  onChange={(e) => setNewTag((p) => ({ ...p, name: e.target.value }))}
+                  placeholder="vd: recruitment" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="label">Mô tả</label>
+                <input className="input" value={newTag.description}
+                  onChange={(e) => setNewTag((p) => ({ ...p, description: e.target.value }))}
+                  placeholder="Mô tả ngắn về tag này" />
+              </div>
+              <button className="btn-primary" onClick={handleCreateTag} style={{ whiteSpace: 'nowrap' }}>Tạo tag</button>
+            </div>
+          </div>
+
+          {/* Tag list */}
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px' }}>
+            <thead>
+              <tr>
+                {['ID', 'Tên tag', 'Mô tả', 'Ngày tạo', 'Actions'].map((h) => (
+                  <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {tags.map((tag) => {
+                const color = TAG_COLORS[tag.name] || '#94a3b8';
+                const isEditing = editingTag?.originalName === tag.name;
+                return (
+                  <tr key={tag.id} className="glass-light" style={{ borderRadius: 12 }}>
+                    <td style={{ padding: '12px 14px', borderRadius: '12px 0 0 12px', fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>{tag.id}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      {isEditing ? (
+                        <input className="input" value={editingTag.name} style={{ padding: '4px 8px', fontSize: 12 }}
+                          onChange={(e) => setEditingTag((p) => ({ ...p, name: e.target.value }))} />
+                      ) : (
+                        <span style={{ padding: '3px 10px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: `${color}15`, color }}>{tag.name}</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 13, color: 'var(--text-secondary)' }}>
+                      {isEditing ? (
+                        <input className="input" value={editingTag.description} style={{ padding: '4px 8px', fontSize: 12 }}
+                          onChange={(e) => setEditingTag((p) => ({ ...p, description: e.target.value }))} />
+                      ) : (
+                        tag.description || <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, color: 'var(--text-secondary)' }}>{tag.createdDate || '—'}</td>
+                    <td style={{ padding: '12px 14px', borderRadius: '0 12px 12px 0' }}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        {isEditing ? (
+                          <>
+                            <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 11, color: '#4ade80' }}
+                              onClick={handleUpdateTag}>Lưu</button>
+                            <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }}
+                              onClick={() => setEditingTag(null)}>Hủy</button>
+                          </>
+                        ) : (
+                          <>
+                            <button className="btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }}
+                              onClick={() => setEditingTag({ originalName: tag.name, name: tag.name, description: tag.description || '' })}>Sửa</button>
+                            <button className="btn-ghost btn-danger" style={{ padding: '4px 10px', fontSize: 11 }}
+                              onClick={() => handleDeleteTag(tag.name)}>Xóa</button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {tags.length === 0 && (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--text-dim)', fontSize: 13 }}>Chưa có tag nào</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ========== BULK ARCHIVE ========== */}
+      {tab === 'bulkarchive' && (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
+                Bài chưa cập nhật hơn 12 tháng — chọn và archive hàng loạt
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn-ghost" onClick={fetchStaleItems} style={{ fontSize: 12 }}>
+                🔄 Tải danh sách
+              </button>
+              {selectedIds.size > 0 && (
+                <button className="btn-ghost btn-danger" onClick={handleBulkArchive} style={{ fontSize: 12 }}>
+                  📦 Archive {selectedIds.size} bài đã chọn
+                </button>
+              )}
+            </div>
+          </div>
+
+          {staleLoading ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>⏳ Đang tải...</div>
+          ) : staleItems.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)', fontSize: 13 }}>
+              {staleItems.length === 0 && selectedIds.size === 0 ? 'Nhấn "Tải danh sách" để xem bài stale' : '✅ Không có bài stale nào'}
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 6px' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                    <input type="checkbox"
+                      checked={selectedIds.size === staleItems.length && staleItems.length > 0}
+                      onChange={(e) => setSelectedIds(e.target.checked ? new Set(staleItems.map(i => i.id)) : new Set())}
+                    />
+                  </th>
+                  {['ID', 'Tiêu đề', 'Loại', 'Cập nhật lần cuối', 'Trạng thái'].map((h) => (
+                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 1 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {staleItems.map((item) => (
+                  <tr key={item.id} className="glass-light" style={{ borderRadius: 12, opacity: selectedIds.has(item.id) ? 1 : 0.7 }}>
+                    <td style={{ padding: '12px 14px', borderRadius: '12px 0 0 12px' }}>
+                      <input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleSelect(item.id)} style={{ cursor: 'pointer' }} />
+                    </td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, fontFamily: 'monospace', color: '#f97316', fontWeight: 700 }}>{item.id}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 13, fontWeight: 600 }}>{item.title}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, color: 'var(--text-secondary)' }}>{item.type}</td>
+                    <td style={{ padding: '12px 14px', fontSize: 12, color: '#fb923c' }}>{item.updatedDate}</td>
+                    <td style={{ padding: '12px 14px', borderRadius: '0 12px 12px 0', fontSize: 12, color: 'var(--text-secondary)' }}>{item.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 

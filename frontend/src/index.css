@@ -184,3 +184,47 @@ body {
   text-transform: uppercase;
   letter-spacing: 1px;
 }
+
+/* Print / Export PDF */
+.print-only { display: none; }
+
+@media print {
+  /* Hide everything except main content */
+  header,
+  .no-print,
+  .glass:not(.print-content) { display: none !important; }
+
+  /* Reset page background */
+  body {
+    background: #fff !important;
+    color: #111 !important;
+    font-family: Georgia, serif;
+  }
+
+  /* Show print-only elements */
+  .print-only { display: block !important; }
+
+  /* Content area takes full page width */
+  .print-content {
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    background: #fff !important;
+    border-radius: 0 !important;
+  }
+
+  /* Make content text readable in black on white */
+  .print-content p,
+  .print-content li,
+  .print-content td { color: #222 !important; font-size: 13pt !important; line-height: 1.7 !important; }
+  .print-content h1,
+  .print-content h2,
+  .print-content h3 { color: #111 !important; }
+  .print-content pre,
+  .print-content code { background: #f5f5f5 !important; color: #333 !important; border: 1px solid #ddd !important; }
+
+  /* Page breaks */
+  h2 { page-break-after: avoid; }
+  pre, blockquote { page-break-inside: avoid; }
+}

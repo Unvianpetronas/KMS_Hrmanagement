@@ -1,0 +1,48 @@
+# ===== IDE =====
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Backend (Spring Boot / Maven) =====
+backend/target/
+backend/*.jar
+backend/*.war
+!backend/src/
+
+# Sensitive config — never commit real secrets
+backend/src/main/resources/application-prod.properties
+backend/src/main/resources/application-local.properties
+
+# ===== Frontend (Node / Vite) =====
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# ===== Database =====
+*.db
+*.sqlite
+*.sqlite3
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Misc =====
+*.class
+*.bak
+*.tmp

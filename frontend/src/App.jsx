@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from './contexts/AuthContext';
+import { VIEWS } from './utils/views';
 import LoginPage from './components/Auth/LoginPage';
 import Header from './components/Layout/Header';
 import StatsBar from './components/KMS/StatsBar';
@@ -7,6 +8,7 @@ import ItemList from './components/KMS/ItemList';
 import ItemDetail from './components/KMS/ItemDetail';
 import ItemForm from './components/KMS/ItemForm';
 import AdminPanel from './components/Admin/AdminPanel';
+import ChatPanel from './components/Chat/ChatPanel';
 import ParticleBG from './components/UI/ParticleBG';
 
 /**
@@ -15,7 +17,7 @@ import ParticleBG from './components/UI/ParticleBG';
  */
 export default function App() {
   const { isLoggedIn } = useAuth();
-  const [view, setView] = useState('list');
+  const [view, setView] = useState(VIEWS.LIST);
   const [selectedId, setSelectedId] = useState(null);
   const [editItem, setEditItem] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -25,28 +27,31 @@ export default function App() {
   // Navigation handler
   const navigate = useCallback((target, data) => {
     switch (target) {
-      case 'list':
-        setView('list');
+      case VIEWS.LIST:
+        setView(VIEWS.LIST);
         setSelectedId(null);
         setEditItem(null);
         break;
-      case 'detail':
-        setView('detail');
+      case VIEWS.DETAIL:
+        setView(VIEWS.DETAIL);
         setSelectedId(data);
         break;
-      case 'create':
-        setView('create');
+      case VIEWS.CREATE:
+        setView(VIEWS.CREATE);
         setEditItem(null);
         break;
-      case 'edit':
-        setView('edit');
+      case VIEWS.EDIT:
+        setView(VIEWS.EDIT);
         setEditItem(data);
         break;
-      case 'admin':
-        setView('admin');
+      case VIEWS.ADMIN:
+        setView(VIEWS.ADMIN);
+        break;
+      case VIEWS.CHAT:
+        setView(VIEWS.CHAT);
         break;
       default:
-        setView('list');
+        setView(VIEWS.LIST);
     }
   }, []);
 
@@ -54,7 +59,8 @@ export default function App() {
   if (!isLoggedIn) return <LoginPage />;
 
   // Current view label for header
-  const headerView = view === 'edit' ? 'create' : view;
+  const headerView = view === VIEWS.EDIT ? VIEWS.CREATE : view;
+
 
   return (
     <div style={{ minHeight: '100vh', position: 'relative' }}>
@@ -62,40 +68,43 @@ export default function App() {
       <Header currentView={headerView} onNavigate={navigate} />
 
       <main style={{ maxWidth: 1400, margin: '0 auto', padding: '24px 28px', position: 'relative', zIndex: 1 }}>
-        {/* Stats always visible */}
-        <StatsBar key={refreshKey} />
+        {/* Stats — hidden on chat/detail/form views */}
+        {view === VIEWS.LIST && <StatsBar key={refreshKey} onSelectItem={(id) => navigate(VIEWS.DETAIL, id)} />}
 
         {/* ===== LIST VIEW ===== */}
-        {view === 'list' && (
+        {view === VIEWS.LIST && (
           <ItemList
             refreshKey={refreshKey}
-            onSelect={(item) => navigate('detail', item.id)}
-            onEdit={(item) => navigate('edit', item)}
+            onSelect={(item) => navigate(VIEWS.DETAIL, item.id)}
+            onEdit={(item) => navigate(VIEWS.EDIT, item)}
           />
         )}
 
         {/* ===== DETAIL VIEW ===== */}
-        {view === 'detail' && selectedId && (
+        {view === VIEWS.DETAIL && selectedId && (
           <ItemDetail
             itemId={selectedId}
-            onBack={() => navigate('list')}
-            onNavigate={(id) => navigate('detail', id)}
-            onEdit={(item) => navigate('edit', item)}
+            onBack={() => navigate(VIEWS.LIST)}
+            onNavigate={(id) => navigate(VIEWS.DETAIL, id)}
+            onEdit={(item) => navigate(VIEWS.EDIT, item)}
           />
         )}
 
         {/* ===== CREATE / EDIT VIEW ===== */}
-        {(view === 'create' || view === 'edit') && (
+        {(view === VIEWS.CREATE || view === VIEWS.EDIT) && (
           <ItemForm
             key={editItem?.id || 'new'}
             editItem={editItem}
-            onDone={() => { navigate('list'); refresh(); }}
-            onCancel={() => navigate('list')}
+            onDone={() => { navigate(VIEWS.LIST); refresh(); }}
+            onCancel={() => navigate(VIEWS.LIST)}
           />
         )}
 
         {/* ===== ADMIN VIEW ===== */}
-        {view === 'admin' && <AdminPanel />}
+        {view === VIEWS.ADMIN && <AdminPanel />}
+
+        {/* ===== CHAT VIEW ===== */}
+        {view === VIEWS.CHAT && <ChatPanel onNavigate={navigate} />}
       </main>
 
       <footer style={{ textAlign: 'center', padding: 20, fontSize: 11, color: '#334155', position: 'relative', zIndex: 1 }}>

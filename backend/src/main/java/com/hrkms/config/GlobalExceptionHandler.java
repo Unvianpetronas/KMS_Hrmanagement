@@ -1,37 +1,70 @@
 package com.hrkms.config;
 
+import com.hrkms.exception.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNotFound(ResourceNotFoundException ex) {
+        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
+
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleValidation(ValidationException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleConflict(ConflictException ex) {
+        return buildResponse(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .collect(Collectors.joining(", "));
+        return buildResponse(HttpStatus.BAD_REQUEST, message);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadable(HttpMessageNotReadableException ex) {
+        return buildResponse(HttpStatus.BAD_REQUEST, "Invalid request body");
+    }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> handleRuntime(RuntimeException ex) {
-        String message = ex.getMessage();
-        HttpStatus status;
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
+    }
 
-        // Map specific error messages to HTTP status codes
-        if (message.contains("không tồn tại") || message.contains("Không tìm thấy") || message.contains("not found")) {
-            status = HttpStatus.NOT_FOUND;
-        } else if (message.contains("không có quyền") || message.contains("Chỉ Admin")) {
-            status = HttpStatus.FORBIDDEN;
-        } else if (message.contains("Token") || message.contains("Phiên đăng nhập") || message.contains("Mật khẩu không đúng")) {
-            status = HttpStatus.UNAUTHORIZED;
-        } else if (message.contains("đã tồn tại") || message.contains("không hợp lệ") || message.contains("Không thể xóa")) {
-            status = HttpStatus.BAD_REQUEST;
-        } else {
-            status = HttpStatus.INTERNAL_SERVER_ERROR;
-        }
-
+    private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
         return ResponseEntity.status(status).body(Map.of(
                 "timestamp", LocalDateTime.now().toString(),
                 "status", status.value(),
                 "error", status.getReasonPhrase(),
-                "message", message
+                "message", message != null ? message : "An unexpected error occurred"
         ));
     }
 }

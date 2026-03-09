@@ -5,89 +5,132 @@ import com.hrkms.dto.JwtUser;
 import com.hrkms.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     private final AuthService authService;
-
-    // ========================
-    // AUTHENTICATION
-    // ========================
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @PostMapping("/login")
-    public ResponseEntity<com.hrkms.dto.AuthDTO.LoginResponse> login(@Valid @RequestBody com.hrkms.dto.AuthDTO.LoginRequest req) {
-        return ResponseEntity.ok(authService.login(req));
+    public ResponseEntity<AuthDTO.LoginResponse> login(@Valid @RequestBody AuthDTO.LoginRequest req) {
+        try {
+            logger.info("Login attempt for user: {}", req.getUsername());
+            return ResponseEntity.ok(authService.login(req));
+        } catch (Exception e) {
+            logger.error("Login failed for user: {} - {}", req.getUsername(), e.getMessage());
+            throw e;
+        }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Map<String, String>> logout() {
+    public ResponseEntity<Map<String, String>> logout(@RequestHeader("Authorization") String token) {
+        logger.info("Logout request received");
         return ResponseEntity.ok(Map.of("message", "Đăng xuất thành công"));
     }
 
     @GetMapping("/me")
-    public ResponseEntity<com.hrkms.dto.AuthDTO.UserResponse> getCurrentUser(@RequestHeader("Authorization") String token) {
-        return ResponseEntity.ok(authService.getMe(token));
+    public ResponseEntity<AuthDTO.UserResponse> getCurrentUser(@RequestHeader("Authorization") String token) {
+        try {
+            logger.info("Get current user info");
+            return ResponseEntity.ok(authService.getMe(token));
+        } catch (Exception e) {
+            logger.error("Get current user failed - {}", e.getMessage());
+            throw e;
+        }
     }
 
-    // ========================
-    // USER MANAGEMENT (Admin only)
-    // ========================
-
     @GetMapping("/users")
-    public ResponseEntity<List<com.hrkms.dto.AuthDTO.UserResponse>> getAllUsers(
-            @RequestHeader("Authorization") String token) {
-        authService.requireAdmin(token); // JWT parse + role check, no DB
-        return ResponseEntity.ok(authService.getAllUsers());
+    public ResponseEntity<List<AuthDTO.UserResponse>> getAllUsers(@RequestHeader("Authorization") String token) {
+        try {
+            authService.requireAdmin(token);
+            logger.info("Admin get all users");
+            return ResponseEntity.ok(authService.getAllUsers());
+        } catch (Exception e) {
+            logger.error("Get all users failed - {}", e.getMessage());
+            throw e;
+        }
     }
 
     @GetMapping("/users/{id}")
-    public ResponseEntity<com.hrkms.dto.AuthDTO.UserResponse> getUser(
+    public ResponseEntity<AuthDTO.UserResponse> getUser(
             @PathVariable Long id,
             @RequestHeader("Authorization") String token) {
-        authService.requireAdmin(token);
-        return ResponseEntity.ok(authService.getUserById(id));
+        try {
+            authService.requireAdmin(token);
+            logger.info("Admin get user id: {}", id);
+            return ResponseEntity.ok(authService.getUserById(id));
+        } catch (Exception e) {
+            logger.error("Get user id: {} failed - {}", id, e.getMessage());
+            throw e;
+        }
     }
 
     @PostMapping("/users")
-    public ResponseEntity<com.hrkms.dto.AuthDTO.UserResponse> createUser(
-            @Valid @RequestBody com.hrkms.dto.AuthDTO.CreateUserRequest req,
+    public ResponseEntity<AuthDTO.UserResponse> createUser(
+            @Valid @RequestBody AuthDTO.CreateUserRequest req,
             @RequestHeader("Authorization") String token) {
-        authService.requireAdmin(token);
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.createUser(req));
+        try {
+            authService.requireAdmin(token);
+            logger.info("Admin create user: {}", req.getUsername());
+            return ResponseEntity.status(HttpStatus.CREATED).body(authService.createUser(req));
+        } catch (Exception e) {
+            logger.error("Create user: {} failed - {}", req.getUsername(), e.getMessage());
+            throw e;
+        }
     }
 
     @PutMapping("/users/{id}")
-    public ResponseEntity<com.hrkms.dto.AuthDTO.UserResponse> updateUser(
+    public ResponseEntity<AuthDTO.UserResponse> updateUser(
             @PathVariable Long id,
-            @RequestBody com.hrkms.dto.AuthDTO.UpdateUserRequest req,
+            @Valid @RequestBody AuthDTO.UpdateUserRequest req,
             @RequestHeader("Authorization") String token) {
-        authService.requireAdmin(token);
-        return ResponseEntity.ok(authService.updateUser(id, req));
+        try {
+            authService.requireAdmin(token);
+            logger.info("Admin update user id: {}", id);
+            return ResponseEntity.ok(authService.updateUser(id, req));
+        } catch (Exception e) {
+            logger.error("Update user id: {} failed - {}", id, e.getMessage());
+            throw e;
+        }
     }
 
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Map<String, String>> deleteUser(
             @PathVariable Long id,
             @RequestHeader("Authorization") String token) {
-        authService.requireAdmin(token);
-        authService.deleteUser(id);
-        return ResponseEntity.ok(Map.of("message", "Xóa user thành công"));
+        try {
+            authService.requireAdmin(token);
+            logger.info("Admin delete user id: {}", id);
+            authService.deleteUser(id);
+            return ResponseEntity.ok(Map.of("message", "Xóa user thành công"));
+        } catch (Exception e) {
+            logger.error("Delete user id: {} failed - {}", id, e.getMessage());
+            throw e;
+        }
     }
 
     @PutMapping("/change-password")
     public ResponseEntity<Map<String, String>> changePassword(
             @Valid @RequestBody AuthDTO.ChangePasswordRequest req,
             @RequestHeader("Authorization") String token) {
-        JwtUser jwtUser = authService.validateToken(token);
-        authService.changePassword(jwtUser.getUserId(), req);
-        return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
+        try {
+            JwtUser jwtUser = authService.validateToken(token);
+            logger.info("Change password for userId: {}", jwtUser.getUserId());
+            authService.changePassword(jwtUser.getUserId(), req);
+            return ResponseEntity.ok(Map.of("message", "Đổi mật khẩu thành công"));
+        } catch (Exception e) {
+            logger.error("Change password failed - {}", e.getMessage());
+            throw e;
+        }
     }
 }

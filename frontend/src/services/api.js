@@ -4,7 +4,8 @@
  * JWT token tự động gắn vào header Authorization
  */
 
-const BASE = '/api/v1';
+const BASE = import.meta.env.VITE_API_URL || '/api/v1';
+const REQUEST_TIMEOUT_MS = 15000;
 
 function getToken() {
   return localStorage.getItem('kms_token');
@@ -18,15 +19,27 @@ function getHeaders() {
 }
 
 async function request(endpoint, options = {}) {
-  const res = await fetch(`${BASE}${endpoint}`, {
-    headers: getHeaders(),
-    ...options,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch(`${BASE}${endpoint}`, {
+      headers: getHeaders(),
+      signal: controller.signal,
+      ...options,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') throw new Error('Request timed out');
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (res.status === 401) {
     localStorage.removeItem('kms_token');
     localStorage.removeItem('kms_user');
-    window.location.reload();
+    window.dispatchEvent(new Event('auth:logout'));
     throw new Error('Phiên đăng nhập hết hạn');
   }
 
@@ -49,14 +62,15 @@ export const authAPI = {
   },
 
   logout() {
-    return request('/auth/logout', { method: 'POST' }).catch(() => {});
+    return request('/auth/logout', { method: 'POST' }).catch((err) => {
+      console.warn('Logout request failed:', err.message);
+    });
   },
 
   getMe() {
     return request('/auth/me');
   },
 
-  // Admin: user management
   getUsers() {
     return request('/auth/users');
   },
@@ -79,7 +93,6 @@ export const authAPI = {
     return request(`/auth/users/${id}`, { method: 'DELETE' });
   },
 
-  // Admin: change password (không cần pass cũ)
   changePassword(userId, newPassword) {
     return request('/auth/change-password', {
       method: 'PUT',
@@ -135,7 +148,7 @@ export const itemsAPI = {
   addComment(id, text) {
     return request(`/items/${id}/comments`, {
       method: 'POST',
-      body: JSON.stringify({ userName: '', text }), // backend overrides userName from JWT
+      body: JSON.stringify({ userName: '', text }),
     });
   },
 
@@ -145,6 +158,60 @@ export const itemsAPI = {
 
   archive(id) {
     return request(`/items/${id}/archive`, { method: 'PUT' });
+  },
+
+  accept(id) {
+    return request(`/items/${id}/accept`, { method: 'PUT' });
+  },
+
+  recordView(id) {
+    return request(`/items/${id}/view`, { method: 'POST' }).catch(() => {});
+  },
+
+  getStale(months = 12) {
+    return request(`/items/stale?months=${months}`);
+  },
+
+  bulkArchive(ids) {
+    return request('/items/bulk-archive', {
+      method: 'PUT',
+      body: JSON.stringify({ ids }),
+    });
+  },
+};
+
+// ============ TAGS ============
+export const tagsAPI = {
+  getAll() {
+    return request('/tags');
+  },
+
+  create(data) {
+    return request('/tags', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  update(tagName, data) {
+    return request(`/tags/${encodeURIComponent(tagName)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  delete(tagName) {
+    return request(`/tags/${encodeURIComponent(tagName)}`, { method: 'DELETE' });
+  },
+};
+
+// ============ CHAT ============
+export const chatAPI = {
+  send(message, history) {
+    return request('/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversationHistory: history }),
+    });
   },
 };
 

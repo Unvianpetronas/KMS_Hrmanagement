@@ -3,6 +3,7 @@ package com.hrkms.service;
 import com.hrkms.config.JwtService;
 import com.hrkms.dto.AuthDTO;
 import com.hrkms.dto.JwtUser;
+import com.hrkms.exception.*;
 import com.hrkms.model.*;
 import com.hrkms.repository.UserRepository;
 import io.jsonwebtoken.Claims;
@@ -27,23 +28,22 @@ public class AuthService {
     // AUTHENTICATION
     // ================================================================
 
-    public com.hrkms.dto.AuthDTO.LoginResponse login(com.hrkms.dto.AuthDTO.LoginRequest req) {
+    @Transactional
+    public AuthDTO.LoginResponse login(AuthDTO.LoginRequest req) {
         User user = userRepo.findByUsername(req.getUsername())
-                .orElseThrow(() -> new RuntimeException("Tên đăng nhập không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Tên đăng nhập không tồn tại"));
 
         if (!user.getActive()) {
-            throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
+            throw new ValidationException("Tài khoản đã bị vô hiệu hóa");
         }
 
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Mật khẩu không đúng");
+            throw new UnauthorizedException("Mật khẩu không đúng");
         }
 
-        // Update last login
         user.setLastLogin(LocalDate.now());
         userRepo.save(user);
 
-        // Generate JWT — embed tất cả thông tin cần thiết vào token
         String token = jwtService.generateToken(
                 user.getId(),
                 user.getUsername(),
@@ -51,7 +51,7 @@ public class AuthService {
                 user.getFullName()
         );
 
-        return com.hrkms.dto.AuthDTO.LoginResponse.builder()
+        return AuthDTO.LoginResponse.builder()
                 .userId(user.getId())
                 .username(user.getUsername())
                 .fullName(user.getFullName())
@@ -62,36 +62,31 @@ public class AuthService {
                 .build();
     }
 
-    /**
-     * Logout
-     */
-    public void logout(String token) {
-    }
-
     public JwtUser validateToken(String token) {
         if (token == null || token.isBlank()) {
-            throw new RuntimeException("Token không hợp lệ");
+            throw new UnauthorizedException("Token không hợp lệ");
         }
         String cleanToken = token.startsWith("Bearer ") ? token.substring(7) : token;
-
-        // Parse JWT
         Claims claims = jwtService.parseToken(cleanToken);
-
+        Long userId = jwtService.getUserId(claims);
+        String username = jwtService.getUsername(claims);
+        String role = jwtService.getRole(claims);
+        String fullName = jwtService.getFullName(claims);
+        if (userId == null || username == null || role == null) {
+            throw new UnauthorizedException("Token không hợp lệ");
+        }
         return JwtUser.builder()
-                .userId(jwtService.getUserId(claims))
-                .username(jwtService.getUsername(claims))
-                .role(jwtService.getRole(claims))
-                .fullName(jwtService.getFullName(claims))
+                .userId(userId)
+                .username(username)
+                .role(role)
+                .fullName(fullName)
                 .build();
     }
 
-    /**
-     * Validate + require MANAGER or ADMIN role.
-     */
     public JwtUser requireManager(String token) {
         JwtUser user = validateToken(token);
         if (!user.canManageItems()) {
-            throw new RuntimeException("Bạn không có quyền thực hiện thao tác này. Yêu cầu role: ADMIN hoặc MANAGER");
+            throw new ForbiddenException("Bạn không có quyền thực hiện thao tác này. Yêu cầu role: ADMIN hoặc MANAGER");
         }
         return user;
     }
@@ -99,67 +94,49 @@ public class AuthService {
     public JwtUser requireAdmin(String token) {
         JwtUser user = validateToken(token);
         if (!user.canManageUsers()) {
-            throw new RuntimeException("Chỉ Admin mới có quyền quản lý tài khoản");
+            throw new ForbiddenException("Chỉ Admin mới có quyền quản lý tài khoản");
         }
         return user;
     }
 
     // ================================================================
-    // USER MANAGEMENT — Admin only, these DO query DB (CRUD operations)
+    // USER MANAGEMENT — Admin only
     // ================================================================
 
     @Transactional
-    public com.hrkms.dto.AuthDTO.UserResponse createUser(com.hrkms.dto.AuthDTO.CreateUserRequest req) {
+    public AuthDTO.UserResponse createUser(AuthDTO.CreateUserRequest req) {
         if (userRepo.existsByUsername(req.getUsername())) {
-            throw new RuntimeException("Tên đăng nhập '" + req.getUsername() + "' đã tồn tại");
+            throw new ConflictException("Tên đăng nhập '" + req.getUsername() + "' đã tồn tại");
         }
-
-        User.Role role;
-        try {
-            role = req.getRole() != null ? User.Role.valueOf(req.getRole().toUpperCase()) : User.Role.USER;
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Role không hợp lệ. Chọn: ADMIN, MANAGER, USER");
-        }
-
         User user = User.builder()
                 .username(req.getUsername())
                 .password(passwordEncoder.encode(req.getPassword()))
                 .fullName(req.getFullName())
                 .email(req.getEmail())
                 .department(req.getDepartment())
-                .role(role)
+                .role(parseRole(req.getRole()))
                 .active(true)
                 .createdDate(LocalDate.now())
                 .build();
-
         return toResponse(userRepo.save(user));
     }
 
     @Transactional
-    public com.hrkms.dto.AuthDTO.UserResponse updateUser(Long id, com.hrkms.dto.AuthDTO.UpdateUserRequest req) {
+    public AuthDTO.UserResponse updateUser(Long id, AuthDTO.UpdateUserRequest req) {
         User user = userRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user id: " + id));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user id: " + id));
         if (req.getFullName() != null) user.setFullName(req.getFullName());
         if (req.getEmail() != null) user.setEmail(req.getEmail());
         if (req.getDepartment() != null) user.setDepartment(req.getDepartment());
         if (req.getActive() != null) user.setActive(req.getActive());
-        if (req.getRole() != null) {
-            try {
-                user.setRole(User.Role.valueOf(req.getRole().toUpperCase()));
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Role không hợp lệ");
-            }
-        }
-
+        if (req.getRole() != null) user.setRole(parseRole(req.getRole()));
         return toResponse(userRepo.save(user));
     }
 
     @Transactional
-    public void changePassword(Long userId, com.hrkms.dto.AuthDTO.ChangePasswordRequest req) {
+    public void changePassword(Long userId, AuthDTO.ChangePasswordRequest req) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
         user.setPassword(passwordEncoder.encode(req.getNewPassword()));
         userRepo.save(user);
     }
@@ -167,42 +144,46 @@ public class AuthService {
     @Transactional
     public void deleteUser(Long id) {
         User user = userRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
         if (user.getRole() == User.Role.ADMIN) {
             long adminCount = userRepo.findByRole(User.Role.ADMIN).size();
             if (adminCount <= 1) {
-                throw new RuntimeException("Không thể xóa Admin cuối cùng trong hệ thống");
+                throw new ValidationException("Không thể xóa Admin cuối cùng trong hệ thống");
             }
         }
         userRepo.deleteById(id);
     }
 
-    public List<com.hrkms.dto.AuthDTO.UserResponse> getAllUsers() {
+    public List<AuthDTO.UserResponse> getAllUsers() {
         return userRepo.findAll().stream().map(this::toResponse).collect(Collectors.toList());
     }
 
-    public com.hrkms.dto.AuthDTO.UserResponse getUserById(Long id) {
+    public AuthDTO.UserResponse getUserById(Long id) {
         return userRepo.findById(id).map(this::toResponse)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy user"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
     }
 
-    /**
-     * Get current user info: parse JWT for basic info (stateless),
-     * nhưng query DB để lấy thông tin đầy đủ nhất (email, department...).
-     */
-    public com.hrkms.dto.AuthDTO.UserResponse getMe(String token) {
+    public AuthDTO.UserResponse getMe(String token) {
         JwtUser jwtUser = validateToken(token);
-        // Query DB vì user muốn xem full profile (email, department...)
         return userRepo.findById(jwtUser.getUserId())
                 .map(this::toResponse)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy user"));
     }
 
     // ================================================================
-    // MAPPER
+    // HELPERS
     // ================================================================
 
-    private com.hrkms.dto.AuthDTO.UserResponse toResponse(User user) {
+    private User.Role parseRole(String roleStr) {
+        if (roleStr == null) return User.Role.USER;
+        try {
+            return User.Role.valueOf(roleStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Role không hợp lệ. Chọn: ADMIN, MANAGER, USER");
+        }
+    }
+
+    private AuthDTO.UserResponse toResponse(User user) {
         return AuthDTO.UserResponse.builder()
                 .id(user.getId()).username(user.getUsername())
                 .fullName(user.getFullName()).email(user.getEmail())

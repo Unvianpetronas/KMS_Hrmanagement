@@ -18,6 +18,7 @@ export const TYPE_CONFIG = {
   Policy: { icon: '📋', accent: '#3b82f6', glow: '0 0 30px rgba(59,130,246,0.3)' },
   FAQ: { icon: '❓', accent: '#eab308', glow: '0 0 30px rgba(234,179,8,0.3)' },
   Checklist: { icon: '✅', accent: '#22c55e', glow: '0 0 30px rgba(34,197,94,0.3)' },
+  Lesson: { icon: '💡', accent: '#f97316', glow: '0 0 30px rgba(249,115,22,0.3)' },
 };
 
 export const ROLE_COLORS = {

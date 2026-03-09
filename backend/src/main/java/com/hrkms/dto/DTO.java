@@ -36,6 +36,9 @@ public class DTO {
         private Double rating;
         private Integer ratingCount;
         private List<CommentResponse> comments;
+        private Integer viewCount;
+        private Boolean isStale;
+        private String suggestedBy;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor
@@ -63,5 +66,10 @@ public class DTO {
         private String type;
         private List<String> tags;
         private String sortBy; // updated, rating, title
+    }
+
+    @Data @NoArgsConstructor @AllArgsConstructor
+    public static class BulkArchiveRequest {
+        @NotEmpty private List<String> ids;
     }
 }

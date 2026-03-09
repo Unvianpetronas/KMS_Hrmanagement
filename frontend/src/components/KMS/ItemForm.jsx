@@ -1,25 +1,37 @@
-import { useState } from 'react';
-import { ALL_TAGS, TAG_COLORS } from '../../services/constants';
-import { itemsAPI } from '../../services/api';
+import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { TAG_COLORS } from '../../services/constants';
+import { itemsAPI, tagsAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../UI/Toast';
 import ChecklistView from './ChecklistView';
 
 const TEMPLATES = {
-  Policy: `MỤC TIÊU: [Mục tiêu của chính sách]
+  Policy: `## Mục tiêu
+[Nêu mục tiêu của chính sách]
 
-PHẠM VI: [Đối tượng áp dụng]
+## Phạm vi áp dụng
+[Đối tượng áp dụng]
 
-QUY ĐỊNH CHÍNH:
-• [Quy định 1]
-• [Quy định 2]
-• [Quy định 3]
+## Quy định chính
+- **Quy định 1:** mô tả chi tiết
+- **Quy định 2:** mô tả chi tiết
+- **Quy định 3:** mô tả chi tiết
 
-VÍ DỤ TÌNH HUỐNG: [Mô tả tình huống cụ thể]
+## Ví dụ tình huống
+[Mô tả tình huống cụ thể]
 
-LIÊN HỆ: [Bộ phận] – [Email] – [Ext]`,
-  FAQ: `HỎI: [Câu hỏi thường gặp]
+## Liên hệ
+Bộ phận HR – hr@company.vn – Ext. 1001`,
+  FAQ: `## Câu hỏi
+[Câu hỏi thường gặp]
 
-ĐÁP: [Câu trả lời chi tiết]`,
+## Trả lời
+[Câu trả lời chi tiết, có thể dùng danh sách:]
+
+- Điểm 1
+- Điểm 2`,
   Checklist: `CHECKLIST TIÊU ĐỀ
 
 ☐ Bước 1: [Mô tả]
@@ -27,10 +39,23 @@ LIÊN HỆ: [Bộ phận] – [Email] – [Ext]`,
 ☐ Bước 3: [Mô tả]
 ☐ Bước 4: [Mô tả]
 ☐ Bước 5: [Mô tả]`,
+  Lesson: `## Bối cảnh
+[Mô tả tình huống hoặc dự án phát sinh bài học]
+
+## Điều đã làm
+[Mô tả cách tiếp cận, hành động thực hiện]
+
+## Kết quả & Bài học
+- **Bài học 1:** mô tả cụ thể
+- **Bài học 2:** mô tả cụ thể
+
+## Khuyến nghị
+[Những gì nên/không nên làm trong tương lai]`,
 };
 
 export default function ItemForm({ editItem, onDone, onCancel }) {
   const { notify } = useToast();
+  const { isManager } = useAuth();
   const [form, setForm] = useState({
     title: editItem?.title || '',
     type: editItem?.type || 'Policy',
@@ -41,6 +66,11 @@ export default function ItemForm({ editItem, onDone, onCancel }) {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [availableTags, setAvailableTags] = useState([]);
+
+  useEffect(() => {
+    tagsAPI.getAll().then(setAvailableTags).catch(() => {});
+  }, []);
 
   const update = (key, val) => setForm((p) => ({ ...p, [key]: val }));
   const toggleTag = (tag) =>
@@ -94,9 +124,9 @@ export default function ItemForm({ editItem, onDone, onCancel }) {
             margin: 0, fontSize: 24, fontWeight: 900, fontFamily: 'var(--font-heading)',
             background: 'linear-gradient(135deg,#a78bfa,#6366f1)',
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>{editItem ? '✏ Chỉnh sửa bài' : '＋ Tạo bài mới'}</h2>
+          }}>{editItem ? '✏ Chỉnh sửa bài' : isManager ? '＋ Tạo bài mới' : '💡 Đề xuất bài mới'}</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-            {editItem ? `Đang sửa: ${editItem.id}` : 'Điền đầy đủ thông tin bên dưới'}
+            {editItem ? `Đang sửa: ${editItem.id}` : isManager ? 'Điền đầy đủ thông tin bên dưới' : 'Đề xuất sẽ được Manager xem xét trước khi xuất bản'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -111,17 +141,28 @@ export default function ItemForm({ editItem, onDone, onCancel }) {
       {showPreview ? (
         /* PREVIEW MODE */
         <div style={{ padding: 20, border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 16, minHeight: 200 }}>
-          <h3 style={{ marginBottom: 16, color: 'var(--text-primary)' }}>{form.title || 'Chưa có tiêu đề'}</h3>
+          <h3 style={{ marginBottom: 16, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{form.title || 'Chưa có tiêu đề'}</h3>
           {form.type === 'Checklist' ? (
             <ChecklistView content={form.content} />
           ) : (
-            form.content.split('\n').map((line, i) => {
-              if (!line.trim()) return <div key={i} style={{ height: 8 }} />;
-              const isSection = line.match(/^(MỤC TIÊU|PHẠM VI|QUY ĐỊNH CHÍNH|VÍ DỤ TÌNH HUỐNG|LIÊN HỆ|HỎI|ĐÁP):/);
-              if (isSection) return <div key={i} style={{ fontSize: 12, fontWeight: 900, color: '#3b82f6', marginTop: i ? 16 : 0, textTransform: 'uppercase', letterSpacing: 1 }}>{line}</div>;
-              if (line.startsWith('•')) return <div key={i} style={{ fontSize: 14, lineHeight: 1.8, color: '#cbd5e1', paddingLeft: 8 }}>● {line.slice(2)}</div>;
-              return <div key={i} style={{ fontSize: 14, lineHeight: 1.8, color: '#cbd5e1' }}>{line}</div>;
-            })
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h2: ({ children }) => <h2 style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa', borderBottom: '1px solid rgba(96,165,250,0.2)', paddingBottom: 4, marginBottom: 10, marginTop: 16 }}>{children}</h2>,
+                h3: ({ children }) => <h3 style={{ fontSize: 14, fontWeight: 700, color: '#cbd5e1', marginBottom: 6, marginTop: 12 }}>{children}</h3>,
+                p: ({ children }) => <p style={{ fontSize: 14, lineHeight: 1.8, color: '#cbd5e1', marginBottom: 10 }}>{children}</p>,
+                ul: ({ children }) => <ul style={{ paddingLeft: 20, marginBottom: 10 }}>{children}</ul>,
+                ol: ({ children }) => <ol style={{ paddingLeft: 20, marginBottom: 10 }}>{children}</ol>,
+                li: ({ children }) => <li style={{ fontSize: 14, lineHeight: 1.7, color: '#cbd5e1', marginBottom: 3 }}>{children}</li>,
+                strong: ({ children }) => <strong style={{ color: '#e2e8f0', fontWeight: 700 }}>{children}</strong>,
+                code: ({ children, className }) => className
+                  ? <code style={{ fontFamily: 'monospace', fontSize: 12 }}>{children}</code>
+                  : <code style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '1px 5px', borderRadius: 3, fontSize: 12, fontFamily: 'monospace' }}>{children}</code>,
+                pre: ({ children }) => <pre style={{ background: 'rgba(15,23,42,0.8)', borderRadius: 8, padding: 12, fontSize: 12, lineHeight: 1.6, overflowX: 'auto', marginBottom: 12 }}>{children}</pre>,
+              }}
+            >
+              {form.content}
+            </ReactMarkdown>
           )}
         </div>
       ) : (
@@ -142,6 +183,7 @@ export default function ItemForm({ editItem, onDone, onCancel }) {
                 <option value="Policy">📋 Policy / SOP</option>
                 <option value="FAQ">❓ FAQ</option>
                 <option value="Checklist">✅ Checklist</option>
+                <option value="Lesson">💡 Bài học kinh nghiệm</option>
               </select>
             </div>
             <div>
@@ -157,15 +199,19 @@ export default function ItemForm({ editItem, onDone, onCancel }) {
               Tags * {errors.tags && <span style={{ color: 'var(--accent-red)', textTransform: 'none' }}>(chọn ít nhất 1)</span>}
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {ALL_TAGS.map((tag) => (
-                <button key={tag} onClick={() => toggleTag(tag)} style={{
-                  padding: '6px 14px', borderRadius: 20, cursor: 'pointer', transition: 'all 0.3s',
-                  border: `2px solid ${form.tags.includes(tag) ? TAG_COLORS[tag] : 'rgba(255,255,255,0.08)'}`,
-                  background: form.tags.includes(tag) ? `${TAG_COLORS[tag]}15` : 'transparent',
-                  color: form.tags.includes(tag) ? TAG_COLORS[tag] : 'var(--text-dim)',
-                  fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-body)',
-                }}>{tag}</button>
-              ))}
+              {availableTags.map((tag) => {
+                const color = TAG_COLORS[tag.name] || '#94a3b8';
+                const active = form.tags.includes(tag.name);
+                return (
+                  <button key={tag.name} onClick={() => toggleTag(tag.name)} title={tag.description || ''} style={{
+                    padding: '6px 14px', borderRadius: 20, cursor: 'pointer', transition: 'all 0.3s',
+                    border: `2px solid ${active ? color : 'rgba(255,255,255,0.08)'}`,
+                    background: active ? `${color}15` : 'transparent',
+                    color: active ? color : 'var(--text-dim)',
+                    fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-body)',
+                  }}>{tag.name}</button>
+                );
+              })}
             </div>
           </div>
 
@@ -200,7 +246,7 @@ export default function ItemForm({ editItem, onDone, onCancel }) {
             <button className="btn-ghost" onClick={onCancel}>Hủy</button>
             <button className="btn-primary" onClick={handleSubmit} disabled={loading}
               style={{ opacity: loading ? 0.7 : 1 }}>
-              {loading ? 'Đang lưu...' : editItem ? 'Cập nhật' : 'Tạo bài mới'}
+              {loading ? 'Đang lưu...' : editItem ? 'Cập nhật' : isManager ? 'Tạo bài mới' : 'Gửi đề xuất'}
             </button>
           </div>
         </div>

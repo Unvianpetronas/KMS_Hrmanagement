@@ -21,14 +21,14 @@ public class AuthDTO {
         private String email;
         private String department;
         private String role;
-        private String token; // Simple token (JWT in production)
+        private String token; // Simple token
     }
 
     // === REGISTER / CREATE USER (Admin only) ===
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class CreateUserRequest {
         @NotBlank private String username;
-        @NotBlank private String password;
+        @NotBlank @jakarta.validation.constraints.Size(min = 8, message = "Mật khẩu phải có ít nhất 8 ký tự") private String password;
         @NotBlank private String fullName;
         private String email;
         private String department;
@@ -48,7 +48,7 @@ public class AuthDTO {
     // === CHANGE PASSWORD ===
     @Data @NoArgsConstructor @AllArgsConstructor
     public static class ChangePasswordRequest {
-        @NotBlank private String newPassword;
+        @NotBlank @jakarta.validation.constraints.Size(min = 8, message = "Mật khẩu mới phải có ít nhất 8 ký tự") private String newPassword;
     }
 
     // === USER RESPONSE ===

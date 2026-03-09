@@ -1,13 +1,39 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
+function loadUserFromStorage() {
+  try {
     const saved = localStorage.getItem('kms_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+    const token = localStorage.getItem('kms_token');
+    if (!saved || !token) return null;
+
+    // Check token expiry
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      localStorage.removeItem('kms_token');
+      localStorage.removeItem('kms_user');
+      return null;
+    }
+
+    return JSON.parse(saved);
+  } catch {
+    localStorage.removeItem('kms_token');
+    localStorage.removeItem('kms_user');
+    return null;
+  }
+}
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => loadUserFromStorage());
+
+  // Listen for auth:logout events dispatched by api.js on 401
+  useEffect(() => {
+    const handleLogout = () => setUser(null);
+    window.addEventListener('auth:logout', handleLogout);
+    return () => window.removeEventListener('auth:logout', handleLogout);
+  }, []);
 
   const login = useCallback(async (username, password) => {
     const data = await authAPI.login(username, password);
