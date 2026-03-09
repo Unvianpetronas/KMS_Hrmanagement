@@ -79,11 +79,26 @@ public class KnowledgeItemController {
             @RequestBody DTO.RatingRequest req,
             @RequestHeader("Authorization") String token) {
         try {
-            authService.validateToken(token);
-            logger.info("Rate item id: {} with stars: {}", id, req.getStars());
-            return ResponseEntity.ok(service.rateItem(id, req.getStars()));
+            JwtUser user = authService.validateToken(token);
+            logger.info("User: {} rate item id: {} with stars: {}", user.getUsername(), id, req.getStars());
+            return ResponseEntity.ok(service.rateItem(id, req.getStars(), user.getUsername()));
         } catch (Exception e) {
             logger.error("Rate item id: {} failed - {}", id, e.getMessage());
+            throw e;
+        }
+    }
+
+    @GetMapping("/items/{id}/my-rating")
+    public ResponseEntity<Map<String, Object>> getMyRating(
+            @PathVariable String id,
+            @RequestHeader("Authorization") String token) {
+        try {
+            JwtUser user = authService.validateToken(token);
+            logger.info("User: {} get own rating for item id: {}", user.getUsername(), id);
+            Integer stars = service.getUserRating(id, user.getUsername());
+            return ResponseEntity.ok(Map.of("stars", stars != null ? stars : 0, "hasRated", stars != null));
+        } catch (Exception e) {
+            logger.error("Get my-rating for item id: {} failed - {}", id, e.getMessage());
             throw e;
         }
     }

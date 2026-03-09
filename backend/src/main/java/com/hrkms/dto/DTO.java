@@ -39,6 +39,7 @@ public class DTO {
         private Integer viewCount;
         private Boolean isStale;
         private String suggestedBy;
+        private Integer userRating;
     }
 
     @Data @NoArgsConstructor @AllArgsConstructor

@@ -19,6 +19,7 @@ public class KnowledgeItemService {
 
     private final KnowledgeItemRepository itemRepo;
     private final TagRepository tagRepo;
+    private final ItemRatingRepository ratingRepo;
 
     private static final int STALE_MONTHS_DEFAULT = 12;
 
@@ -185,14 +186,32 @@ public class KnowledgeItemService {
     // === RATING ===
 
     @Transactional
-    public DTO.ItemResponse rateItem(String id, int stars) {
+    public DTO.ItemResponse rateItem(String id, int stars, String username) {
         if (stars < 1 || stars > 5) throw new ValidationException("Rating phải từ 1-5");
         KnowledgeItem item = itemRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy: " + id));
-        double totalRating = item.getRating() * item.getRatingCount() + stars;
-        item.setRatingCount(item.getRatingCount() + 1);
-        item.setRating(Math.round(totalRating / item.getRatingCount() * 10.0) / 10.0);
-        return toResponse(itemRepo.save(item));
+        Optional<ItemRating> existing = ratingRepo.findByItemIdAndUsername(id, username);
+        if (existing.isPresent()) {
+            ItemRating rating = existing.get();
+            int oldStars = rating.getStars();
+            double currentTotal = item.getRating() * item.getRatingCount();
+            item.setRating(Math.round((currentTotal - oldStars + stars) / item.getRatingCount() * 10.0) / 10.0);
+            rating.setStars(stars);
+            rating.setRatedDate(LocalDate.now());
+            ratingRepo.save(rating);
+        } else {
+            double currentTotal = item.getRating() * item.getRatingCount();
+            item.setRatingCount(item.getRatingCount() + 1);
+            item.setRating(Math.round((currentTotal + stars) / item.getRatingCount() * 10.0) / 10.0);
+            ratingRepo.save(ItemRating.builder().itemId(id).username(username).stars(stars).build());
+        }
+        return toResponse(itemRepo.save(item), username);
+    }
+
+    public Integer getUserRating(String id, String username) {
+        return ratingRepo.findByItemIdAndUsername(id, username)
+                .map(ItemRating::getStars)
+                .orElse(null);
     }
 
     // === COMMENTS ===
@@ -296,12 +315,20 @@ public class KnowledgeItemService {
     // === MAPPER ===
 
     private DTO.ItemResponse toResponse(KnowledgeItem item) {
+        return toResponse(item, null);
+    }
+
+    private DTO.ItemResponse toResponse(KnowledgeItem item, String callerUsername) {
         List<String> tagNames = item.getTags().stream().map(Tag::getName).collect(Collectors.toList());
         List<DTO.CommentResponse> comments = item.getComments().stream()
                 .map(c -> new DTO.CommentResponse(c.getId(), c.getUserName(), c.getText(), c.getCreatedDate()))
                 .collect(Collectors.toList());
         boolean isStale = item.getUpdatedDate() != null
                 && item.getUpdatedDate().isBefore(LocalDate.now().minusMonths(STALE_MONTHS_DEFAULT));
+        Integer userRating = callerUsername != null
+                ? ratingRepo.findByItemIdAndUsername(item.getId(), callerUsername)
+                        .map(ItemRating::getStars).orElse(null)
+                : null;
         return new DTO.ItemResponse(
                 item.getId(), item.getTitle(), item.getType(), tagNames,
                 item.getAudience(), item.getContent(), item.getRelatedItems(),
@@ -309,7 +336,8 @@ public class KnowledgeItemService {
                 item.getStatus(), item.getRating(), item.getRatingCount(), comments,
                 item.getViewCount() != null ? item.getViewCount() : 0,
                 isStale,
-                item.getSuggestedBy()
+                item.getSuggestedBy(),
+                userRating
         );
     }
 }

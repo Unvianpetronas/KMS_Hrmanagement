@@ -5,3 +5,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/002-km-framework.sql
       relativeToChangelogFile: false
+  - include:
+      file: db/changelog/003-item-ratings.sql
+      relativeToChangelogFile: false
