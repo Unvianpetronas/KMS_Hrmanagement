@@ -4,18 +4,17 @@ export default function Stars({ rating = 0, onRate, size = 18 }) {
   const [hover, setHover] = useState(0);
 
   return (
-    <span style={{ display: 'inline-flex', gap: 2, alignItems: 'center' }}>
+    <span className="inline-flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((star) => (
         <span
           key={star}
           style={{
             cursor: onRate ? 'pointer' : 'default',
             fontSize: size,
-            color: star <= (hover || Math.round(rating)) ? '#fbbf24' : '#374151',
-            transition: 'all 0.2s',
-            filter: star <= (hover || Math.round(rating))
-              ? 'drop-shadow(0 0 4px rgba(251,191,36,0.6))' : 'none',
-            transform: star === hover ? 'scale(1.3)' : 'scale(1)',
+            color: star <= (hover || Math.round(rating)) ? '#d97706' : '#d1d5db',
+            transition: 'color 0.15s',
+            transform: star === hover && onRate ? 'scale(1.2)' : 'scale(1)',
+            display: 'inline-block',
           }}
           onMouseEnter={() => onRate && setHover(star)}
           onMouseLeave={() => onRate && setHover(0)}
@@ -25,7 +24,7 @@ export default function Stars({ rating = 0, onRate, size = 18 }) {
         </span>
       ))}
       {!onRate && rating > 0 && (
-        <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 4, fontWeight: 700 }}>
+        <span className="text-xs text-slate-400 font-medium ml-1">
           {rating.toFixed(1)}
         </span>
       )}

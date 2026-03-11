@@ -145,6 +145,10 @@ export const itemsAPI = {
     });
   },
 
+  getMyRating(id) {
+    return request(`/items/${id}/my-rating`).catch(() => ({ stars: 0, hasRated: false }));
+  },
+
   addComment(id, text) {
     return request(`/items/${id}/comments`, {
       method: 'POST',

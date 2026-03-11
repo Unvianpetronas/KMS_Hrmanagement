@@ -10,19 +10,16 @@ export function ToastProvider({ children }) {
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  const borderColor = toast?.type === 'error' ? '#dc2626' : toast?.type === 'info' ? '#1d4ed8' : '#047857';
+  const textColor   = toast?.type === 'error' ? '#dc2626' : toast?.type === 'info' ? '#1d4ed8' : '#047857';
+
   return (
     <ToastContext.Provider value={{ notify }}>
       {children}
       {toast && (
         <div
-          className="glass fade-in"
-          style={{
-            position: 'fixed', top: 24, right: 24, zIndex: 9999,
-            padding: '14px 24px', borderRadius: 14, fontSize: 14, fontWeight: 600,
-            boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
-            color: toast.type === 'error' ? '#f87171' : toast.type === 'info' ? '#60a5fa' : '#4ade80',
-            borderLeft: `3px solid ${toast.type === 'error' ? '#ef4444' : toast.type === 'info' ? '#3b82f6' : '#22c55e'}`,
-          }}
+          className="fade-in fixed top-5 right-5 z-[9999] bg-white border border-gray-200 rounded-md px-4 py-3 text-sm font-medium max-w-xs"
+          style={{ borderLeftWidth: 3, borderLeftColor: borderColor, color: textColor }}
         >
           {toast.msg}
         </div>

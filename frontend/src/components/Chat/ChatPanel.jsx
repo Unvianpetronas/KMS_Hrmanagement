@@ -12,51 +12,52 @@ const SUGGESTED = [
   'Chính sách làm việc từ xa là gì?',
 ];
 
+const mdBotComponents = {
+  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+  ul: ({ children }) => <ul className="pl-4 mb-2 space-y-0.5">{children}</ul>,
+  ol: ({ children }) => <ol className="pl-4 mb-2 space-y-0.5">{children}</ol>,
+  li: ({ children }) => <li className="text-sm">{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold text-slate-900">{children}</strong>,
+  code: ({ children, className }) => className
+    ? <code className="font-mono text-xs">{children}</code>
+    : <code className="bg-slate-100 text-slate-700 px-1 rounded text-xs font-mono">{children}</code>,
+};
+
 function MessageBubble({ msg, onSelectDoc }) {
   const isUser = msg.role === 'user';
 
   return (
-    <div style={{ display: 'flex', justifyContent: isUser ? 'flex-end' : 'flex-start', marginBottom: 16 }}>
-      {!isUser && (
-        <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#14b8a6,#0d9488)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0, marginRight: 10, alignSelf: 'flex-end' }}>
-          🤖
-        </div>
-      )}
+    <div className={`flex items-end gap-2 mb-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+      {/* Avatar */}
+      <div
+        className={`w-7 h-7 rounded flex items-center justify-center text-xs font-bold text-white flex-shrink-0 ${
+          isUser ? 'bg-emerald-600' : 'bg-slate-600'
+        }`}
+      >
+        {isUser ? 'U' : '🤖'}
+      </div>
 
-      <div style={{ maxWidth: '75%' }}>
-        <div style={{
-          padding: '12px 16px',
-          borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-          background: isUser ? 'rgba(99,102,241,0.15)' : 'rgba(30,41,59,0.7)',
-          border: `1px solid ${isUser ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.06)'}`,
-          backdropFilter: 'blur(16px)',
-        }}>
+      <div className={`max-w-[75%] ${isUser ? 'items-end' : 'items-start'} flex flex-col`}>
+        {/* Bubble */}
+        <div
+          className={`rounded-md px-3 py-2.5 text-sm leading-relaxed border ${
+            isUser
+              ? 'bg-emerald-50 border-emerald-200 text-slate-800'
+              : 'bg-white border-gray-200 text-slate-700'
+          }`}
+        >
           {isUser ? (
-            <p style={{ margin: 0, fontSize: 14, color: '#e2e8f0', lineHeight: 1.6 }}>{msg.content}</p>
+            <p className="m-0">{msg.content}</p>
           ) : (
-            <div style={{ fontSize: 14, color: '#cbd5e1', lineHeight: 1.7 }}>
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  p: ({ children }) => <p style={{ margin: '0 0 8px' }}>{children}</p>,
-                  ul: ({ children }) => <ul style={{ paddingLeft: 18, margin: '6px 0' }}>{children}</ul>,
-                  ol: ({ children }) => <ol style={{ paddingLeft: 18, margin: '6px 0' }}>{children}</ol>,
-                  li: ({ children }) => <li style={{ marginBottom: 3, lineHeight: 1.6 }}>{children}</li>,
-                  strong: ({ children }) => <strong style={{ color: '#e2e8f0' }}>{children}</strong>,
-                  code: ({ children, className }) => className
-                    ? <code style={{ fontFamily: 'monospace', fontSize: 12 }}>{children}</code>
-                    : <code style={{ background: 'rgba(99,102,241,0.2)', color: '#a5b4fc', padding: '1px 5px', borderRadius: 3, fontSize: 12, fontFamily: 'monospace' }}>{children}</code>,
-                }}
-              >
-                {msg.content}
-              </ReactMarkdown>
-            </div>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdBotComponents}>
+              {msg.content}
+            </ReactMarkdown>
           )}
         </div>
 
         {/* Source doc chips */}
         {!isUser && msg.sourceDocs?.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          <div className="flex flex-wrap gap-1.5 mt-1.5">
             {msg.sourceDocs.map((doc) => {
               const type = doc.id.startsWith('POL') ? 'Policy' : doc.id.startsWith('FAQ') ? 'FAQ' : 'Checklist';
               const cfg = TYPE_CONFIG[type] || TYPE_CONFIG.Policy;
@@ -64,13 +65,8 @@ function MessageBubble({ msg, onSelectDoc }) {
                 <button
                   key={doc.id}
                   onClick={() => onSelectDoc(doc.id)}
-                  style={{
-                    padding: '3px 10px', borderRadius: 8, border: `1px solid ${cfg.accent}30`,
-                    background: `${cfg.accent}10`, color: cfg.accent, fontSize: 11, fontWeight: 700,
-                    cursor: 'pointer', fontFamily: 'monospace', transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = `${cfg.accent}20`)}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = `${cfg.accent}10`)}
+                  className="text-xs font-mono font-semibold px-2 py-0.5 rounded border cursor-pointer transition-colors hover:opacity-80"
+                  style={{ background: `${cfg.accent}10`, color: cfg.accent, borderColor: `${cfg.accent}30` }}
                 >
                   {doc.id}
                 </button>
@@ -81,17 +77,9 @@ function MessageBubble({ msg, onSelectDoc }) {
 
         {/* Model label */}
         {!isUser && msg.model && (
-          <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 4 }}>
-            {msg.model}
-          </div>
+          <div className="text-xs text-slate-400 mt-1">{msg.model}</div>
         )}
       </div>
-
-      {isUser && (
-        <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', flexShrink: 0, marginLeft: 10, alignSelf: 'flex-end' }}>
-          U
-        </div>
-      )}
     </div>
   );
 }
@@ -107,83 +95,62 @@ export default function ChatPanel({ onNavigate }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const buildHistory = () =>
-    messages.map((m) => ({ role: m.role, content: m.content }));
+  const buildHistory = () => messages.map((m) => ({ role: m.role, content: m.content }));
 
   const send = async (text) => {
     const msg = text || input.trim();
     if (!msg || loading) return;
     setInput('');
-
-    const userMsg = { role: 'user', content: msg };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => [...prev, { role: 'user', content: msg }]);
     setLoading(true);
-
     try {
       const res = await chatAPI.send(msg, buildHistory());
-      setMessages((prev) => [...prev, {
-        role: 'assistant',
-        content: res.answer,
-        sourceDocs: res.sourceDocs,
-        model: res.model,
-      }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: res.answer, sourceDocs: res.sourceDocs, model: res.model }]);
     } catch (err) {
       notify(err.message, 'error');
-      setMessages((prev) => [...prev, {
-        role: 'assistant',
-        content: 'Xin lỗi, có lỗi xảy ra. Vui lòng kiểm tra kết nối AI.',
-        sourceDocs: [],
-      }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: 'Xin lỗi, có lỗi xảy ra. Vui lòng kiểm tra kết nối AI.', sourceDocs: [] }]);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fade-in" style={{ height: 'calc(100vh - 180px)', display: 'flex', flexDirection: 'column' }}>
+    <div className="bg-white border border-gray-200 rounded-md flex flex-col fade-in" style={{ height: 'calc(100vh - 160px)' }}>
       {/* Header */}
-      <div className="glass" style={{ borderRadius: '20px 20px 0 0', padding: '18px 24px', borderBottom: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#14b8a6,#0d9488)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 0 20px rgba(20,184,166,0.3)' }}>
-            🤖
-          </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-heading)', background: 'linear-gradient(135deg,#2dd4bf,#14b8a6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              HR AI Assistant
-            </h2>
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--text-muted)' }}>Hỏi bất kỳ câu hỏi về chính sách HR</p>
-          </div>
-          {messages.length > 0 && (
-            <button className="btn-ghost" style={{ marginLeft: 'auto', fontSize: 12 }} onClick={() => setMessages([])}>
-              Xóa lịch sử
-            </button>
-          )}
+      <div className="px-5 py-3.5 border-b border-gray-200 flex items-center gap-3 flex-shrink-0">
+        <div className="w-8 h-8 rounded bg-slate-700 flex items-center justify-center text-base flex-shrink-0">
+          🤖
         </div>
+        <div>
+          <h2 className="text-sm font-semibold text-slate-900">HR AI Assistant</h2>
+          <p className="text-xs text-slate-400">Hỏi bất kỳ câu hỏi về chính sách HR</p>
+        </div>
+        {messages.length > 0 && (
+          <button
+            className="btn-ghost text-xs ml-auto"
+            onClick={() => setMessages([])}
+          >
+            Xóa lịch sử
+          </button>
+        )}
       </div>
 
       {/* Messages */}
-      <div className="glass" style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', borderRadius: 0 }}>
+      <div className="flex-1 overflow-y-auto px-5 py-4 bg-gray-50">
         {messages.length === 0 ? (
-          /* Empty state with suggestions */
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 24 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>🤖</div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>Chào! Tôi là HR Assistant</h3>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>Hỏi tôi về chính sách nghỉ phép, lương, onboarding và hơn thế nữa</p>
+          /* Empty state */
+          <div className="h-full flex flex-col items-center justify-center gap-5">
+            <div className="text-center">
+              <div className="text-4xl mb-3">🤖</div>
+              <h3 className="text-sm font-semibold text-slate-900 mb-1">Chào! Tôi là HR Assistant</h3>
+              <p className="text-xs text-slate-500">Hỏi tôi về chính sách nghỉ phép, lương, onboarding và hơn thế nữa</p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, maxWidth: 500 }}>
+            <div className="grid grid-cols-2 gap-2 max-w-md w-full">
               {SUGGESTED.map((q) => (
                 <button
                   key={q}
                   onClick={() => send(q)}
-                  style={{
-                    padding: '12px 16px', borderRadius: 12, textAlign: 'left',
-                    background: 'rgba(20,184,166,0.06)', border: '1px solid rgba(20,184,166,0.15)',
-                    color: '#5eead4', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    transition: 'all 0.2s', fontFamily: 'var(--font-body)',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(20,184,166,0.12)'; e.currentTarget.style.borderColor = 'rgba(20,184,166,0.3)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(20,184,166,0.06)'; e.currentTarget.style.borderColor = 'rgba(20,184,166,0.15)'; }}
+                  className="px-3 py-2.5 text-xs text-left text-slate-600 bg-white border border-gray-200 rounded-md hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700 cursor-pointer transition-colors"
                 >
                   {q}
                 </button>
@@ -193,19 +160,19 @@ export default function ChatPanel({ onNavigate }) {
         ) : (
           <>
             {messages.map((msg, i) => (
-              <MessageBubble
-                key={i}
-                msg={msg}
-                onSelectDoc={(id) => onNavigate('detail', id)}
-              />
+              <MessageBubble key={i} msg={msg} onSelectDoc={(id) => onNavigate('detail', id)} />
             ))}
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#14b8a6,#0d9488)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>🤖</div>
-                <div className="glass-light" style={{ padding: '12px 16px', borderRadius: '16px 16px 16px 4px' }}>
-                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              <div className="flex items-end gap-2 mb-4">
+                <div className="w-7 h-7 rounded bg-slate-600 flex items-center justify-center text-sm flex-shrink-0">🤖</div>
+                <div className="bg-white border border-gray-200 rounded-md px-3 py-2.5">
+                  <div className="flex gap-1 items-center">
                     {[0, 0.2, 0.4].map((d, i) => (
-                      <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: '#2dd4bf', animation: `fadeIn 0.6s ${d}s infinite alternate` }} />
+                      <div
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-slate-400"
+                        style={{ animation: `fadeIn 0.8s ${d}s infinite alternate` }}
+                      />
                     ))}
                   </div>
                 </div>
@@ -217,27 +184,24 @@ export default function ChatPanel({ onNavigate }) {
       </div>
 
       {/* Input bar */}
-      <div className="glass" style={{ borderRadius: '0 0 20px 20px', padding: '16px 24px', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 10 }}>
+      <div className="px-5 py-3.5 border-t border-gray-200 flex-shrink-0">
+        <div className="flex gap-2">
           <input
-            className="input"
+            className="input flex-1"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
             placeholder="Hỏi về chính sách HR... (Enter để gửi)"
             disabled={loading}
-            style={{ flex: 1, borderColor: input ? 'rgba(20,184,166,0.4)' : undefined }}
           />
           <button
             onClick={() => send()}
             disabled={!input.trim() || loading}
-            style={{
-              padding: '0 20px', borderRadius: 12, border: 'none', cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',
-              background: input.trim() && !loading ? 'linear-gradient(135deg,#14b8a6,#0d9488)' : 'rgba(255,255,255,0.05)',
-              color: input.trim() && !loading ? '#fff' : 'var(--text-dim)',
-              fontWeight: 700, fontSize: 14, transition: 'all 0.3s',
-              boxShadow: input.trim() && !loading ? '0 4px 20px rgba(20,184,166,0.3)' : 'none',
-            }}
+            className={`px-5 py-2 rounded text-sm font-medium border-0 transition-colors cursor-pointer ${
+              input.trim() && !loading
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                : 'bg-gray-100 text-slate-400 cursor-not-allowed'
+            }`}
           >
             Gửi
           </button>

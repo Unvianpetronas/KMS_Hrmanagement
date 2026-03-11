@@ -5,13 +5,15 @@ export default function TagBadge({ tag, small = false }) {
   return (
     <span
       style={{
-        padding: small ? '2px 8px' : '3px 10px',
-        borderRadius: 20,
-        background: `${color}15`,
+        display: 'inline-block',
+        padding: small ? '1px 7px' : '2px 8px',
+        borderRadius: 4,
+        background: `${color}12`,
         color,
         fontSize: small ? 10 : 11,
-        fontWeight: 700,
-        border: `1px solid ${color}25`,
+        fontWeight: 600,
+        border: `1px solid ${color}30`,
+        lineHeight: '1.6',
       }}
     >
       {tag}

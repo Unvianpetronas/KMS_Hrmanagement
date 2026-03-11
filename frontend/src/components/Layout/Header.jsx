@@ -1,63 +1,93 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { ROLE_COLORS } from '../../services/constants';
 
+function NavBtn({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-2 text-sm font-medium rounded-none border-0 border-b-2 cursor-pointer transition-colors -mb-px ${
+        active
+          ? 'border-emerald-600 text-emerald-700 bg-white'
+          : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-gray-50 bg-transparent'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function Header({ currentView, onNavigate }) {
-  const { user, logout, isAdmin, isManager, isLoggedIn } = useAuth();
+  const { user, logout, isAdmin, isManager } = useAuth();
 
   return (
-    <header className="glass" style={{ position: 'sticky', top: 0, zIndex: 100, borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64, padding: '0 28px' }}>
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-screen-xl mx-auto px-6 flex items-center h-14 gap-6">
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }} onClick={() => onNavigate('list')}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: 'linear-gradient(135deg,#3b82f6,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: '0 4px 16px rgba(99,102,241,0.3)' }}>📚</div>
+        <div
+          className="flex items-center gap-2.5 cursor-pointer flex-shrink-0"
+          onClick={() => onNavigate('list')}
+        >
+          <div className="w-8 h-8 rounded bg-emerald-600 flex items-center justify-center text-white text-base">
+            📚
+          </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, fontFamily: 'var(--font-heading)', letterSpacing: -0.5 }}>HR Knowledge Hub</div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: -2 }}>Onboarding & Policy KMS</div>
+            <div className="text-sm font-semibold text-slate-900 leading-tight">HR Knowledge Hub</div>
+            <div className="text-xs text-slate-400 leading-tight">Onboarding & Policy KMS</div>
           </div>
         </div>
 
-        {/* Nav + User */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button className={`btn-ghost ${currentView === 'list' ? 'active' : ''}`} onClick={() => onNavigate('list')}>
-            📂 Repository
-          </button>
-          {isManager && (
-            <button className={`btn-ghost ${currentView === 'create' ? 'active' : ''}`} onClick={() => onNavigate('create')}
-              style={currentView === 'create' ? { background: 'rgba(99,102,241,0.12)', color: '#a78bfa', borderColor: 'rgba(139,92,246,0.3)' } : {}}>
-              ＋ Tạo mới
-            </button>
+        {/* Divider */}
+        <div className="h-6 w-px bg-gray-200" />
+
+        {/* Nav — tab style, flush with bottom border */}
+        <nav className="flex items-end h-full gap-0.5">
+          <NavBtn active={currentView === 'list'} onClick={() => onNavigate('list')}>
+            Repository
+          </NavBtn>
+          {isManager ? (
+            <NavBtn active={currentView === 'create'} onClick={() => onNavigate('create')}>
+              + Tạo mới
+            </NavBtn>
+          ) : (
+            <NavBtn active={currentView === 'create'} onClick={() => onNavigate('create')}>
+              Đề xuất
+            </NavBtn>
           )}
-          {!isManager && (
-            <button className={`btn-ghost ${currentView === 'create' ? 'active' : ''}`} onClick={() => onNavigate('create')}
-              style={currentView === 'create' ? { background: 'rgba(168,85,247,0.1)', color: '#c084fc', borderColor: 'rgba(168,85,247,0.3)' } : {}}>
-              💡 Đề xuất
-            </button>
-          )}
-          <button className={`btn-ghost ${currentView === 'chat' ? 'active' : ''}`} onClick={() => onNavigate('chat')}
-            style={currentView === 'chat' ? { background: 'rgba(20,184,166,0.1)', color: '#2dd4bf', borderColor: 'rgba(20,184,166,0.3)' } : {}}>
-            🤖 AI Chat
-          </button>
+          <NavBtn active={currentView === 'chat'} onClick={() => onNavigate('chat')}>
+            AI Chat
+          </NavBtn>
           {isAdmin && (
-            <button className={`btn-ghost ${currentView === 'admin' ? 'active' : ''}`} onClick={() => onNavigate('admin')}
-              style={currentView === 'admin' ? { background: 'rgba(239,68,68,0.1)', color: '#f87171', borderColor: 'rgba(239,68,68,0.3)' } : {}}>
-              ⚙ Admin
-            </button>
+            <NavBtn active={currentView === 'admin'} onClick={() => onNavigate('admin')}>
+              Admin
+            </NavBtn>
           )}
+        </nav>
 
-          <div style={{ width: 1, height: 28, background: 'var(--border)', margin: '0 4px' }} />
-
-          {/* User avatar + info */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, color: '#fff' }}>
+        {/* Right side */}
+        <div className="ml-auto flex items-center gap-3">
+          {/* User info */}
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded bg-emerald-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
               {user.fullName.split(' ').pop()[0]}
             </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, lineHeight: 1 }}>{user.fullName}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: ROLE_COLORS[user.role]?.color }}>{user.role}</div>
+            <div className="hidden sm:block">
+              <div className="text-xs font-semibold text-slate-900 leading-tight">{user.fullName}</div>
+              <div
+                className="text-xs font-medium leading-tight"
+                style={{ color: ROLE_COLORS[user.role]?.color }}
+              >
+                {user.role}
+              </div>
             </div>
           </div>
 
-          <button className="btn-ghost btn-danger" style={{ padding: '6px 12px', fontSize: 12 }} onClick={logout}>
+          {/* Divider */}
+          <div className="h-5 w-px bg-gray-200" />
+
+          <button
+            className="btn-ghost btn-danger text-xs px-2.5 py-1"
+            onClick={logout}
+          >
             Đăng xuất
           </button>
         </div>

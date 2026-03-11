@@ -78,10 +78,7 @@ export default function ItemForm({ editItem, onDone, onCancel }) {
 
   const handleTypeChange = (type) => {
     update('type', type);
-    // Auto-fill template if content is empty
-    if (!form.content.trim()) {
-      update('content', TEMPLATES[type] || '');
-    }
+    if (!form.content.trim()) update('content', TEMPLATES[type] || '');
   };
 
   const handleSubmit = async () => {
@@ -93,14 +90,7 @@ export default function ItemForm({ editItem, onDone, onCancel }) {
 
     setLoading(true);
     try {
-      const payload = {
-        title: form.title,
-        type: form.type,
-        tags: form.tags,
-        audience: form.audience,
-        content: form.content,
-      };
-
+      const payload = { title: form.title, type: form.type, tags: form.tags, audience: form.audience, content: form.content };
       if (editItem) {
         await itemsAPI.update(editItem.id, payload);
         notify('Cập nhật thành công! ✅');
@@ -116,141 +106,176 @@ export default function ItemForm({ editItem, onDone, onCancel }) {
     }
   };
 
+  const previewComponents = {
+    h2: ({ children }) => <h2 className="text-base font-semibold text-emerald-700 border-b border-emerald-100 pb-1 mb-2 mt-4">{children}</h2>,
+    h3: ({ children }) => <h3 className="text-sm font-semibold text-slate-700 mb-1.5 mt-3">{children}</h3>,
+    p: ({ children }) => <p className="text-sm text-slate-600 leading-relaxed mb-2">{children}</p>,
+    ul: ({ children }) => <ul className="pl-5 mb-2 space-y-0.5">{children}</ul>,
+    ol: ({ children }) => <ol className="pl-5 mb-2 space-y-0.5">{children}</ol>,
+    li: ({ children }) => <li className="text-sm text-slate-600">{children}</li>,
+    strong: ({ children }) => <strong className="font-semibold text-slate-900">{children}</strong>,
+    code: ({ children, className }) => className
+      ? <code className="font-mono text-xs">{children}</code>
+      : <code className="bg-slate-100 text-slate-700 px-1 rounded text-xs font-mono">{children}</code>,
+    pre: ({ children }) => (
+      <pre className="bg-slate-50 border border-gray-200 rounded p-3 text-xs text-slate-700 overflow-x-auto mb-2">
+        {children}
+      </pre>
+    ),
+  };
+
   return (
-    <div className="glass fade-in" style={{ borderRadius: 'var(--radius-xl)', padding: 32 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 28 }}>
+    <div className="bg-white border border-gray-200 rounded-md fade-in">
+      {/* Form header */}
+      <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
         <div>
-          <h2 style={{
-            margin: 0, fontSize: 24, fontWeight: 900, fontFamily: 'var(--font-heading)',
-            background: 'linear-gradient(135deg,#a78bfa,#6366f1)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>{editItem ? '✏ Chỉnh sửa bài' : isManager ? '＋ Tạo bài mới' : '💡 Đề xuất bài mới'}</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-            {editItem ? `Đang sửa: ${editItem.id}` : isManager ? 'Điền đầy đủ thông tin bên dưới' : 'Đề xuất sẽ được Manager xem xét trước khi xuất bản'}
+          <h2 className="text-base font-semibold text-slate-900">
+            {editItem ? '✏ Chỉnh sửa bài' : isManager ? '+ Tạo bài mới' : '💡 Đề xuất bài mới'}
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {editItem
+              ? `Đang sửa: ${editItem.id}`
+              : isManager
+              ? 'Điền đầy đủ thông tin bên dưới'
+              : 'Đề xuất sẽ được Manager xem xét trước khi xuất bản'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn-ghost" onClick={() => setShowPreview(!showPreview)}
-            style={showPreview ? { background: 'rgba(59,130,246,0.1)', color: '#60a5fa' } : {}}>
+        <div className="flex items-center gap-2">
+          <button
+            className={`btn-ghost text-xs ${showPreview ? 'active' : ''}`}
+            onClick={() => setShowPreview(!showPreview)}
+          >
             {showPreview ? '📝 Sửa' : '👁 Preview'}
           </button>
-          <button className="btn-ghost" onClick={onCancel} style={{ fontSize: 20, padding: '4px 12px' }}>×</button>
+          <button className="btn-ghost text-base px-2.5 py-1" onClick={onCancel}>×</button>
         </div>
       </div>
 
-      {showPreview ? (
-        /* PREVIEW MODE */
-        <div style={{ padding: 20, border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 16, minHeight: 200 }}>
-          <h3 style={{ marginBottom: 16, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{form.title || 'Chưa có tiêu đề'}</h3>
-          {form.type === 'Checklist' ? (
-            <ChecklistView content={form.content} />
-          ) : (
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                h2: ({ children }) => <h2 style={{ fontSize: 16, fontWeight: 700, color: '#60a5fa', borderBottom: '1px solid rgba(96,165,250,0.2)', paddingBottom: 4, marginBottom: 10, marginTop: 16 }}>{children}</h2>,
-                h3: ({ children }) => <h3 style={{ fontSize: 14, fontWeight: 700, color: '#cbd5e1', marginBottom: 6, marginTop: 12 }}>{children}</h3>,
-                p: ({ children }) => <p style={{ fontSize: 14, lineHeight: 1.8, color: '#cbd5e1', marginBottom: 10 }}>{children}</p>,
-                ul: ({ children }) => <ul style={{ paddingLeft: 20, marginBottom: 10 }}>{children}</ul>,
-                ol: ({ children }) => <ol style={{ paddingLeft: 20, marginBottom: 10 }}>{children}</ol>,
-                li: ({ children }) => <li style={{ fontSize: 14, lineHeight: 1.7, color: '#cbd5e1', marginBottom: 3 }}>{children}</li>,
-                strong: ({ children }) => <strong style={{ color: '#e2e8f0', fontWeight: 700 }}>{children}</strong>,
-                code: ({ children, className }) => className
-                  ? <code style={{ fontFamily: 'monospace', fontSize: 12 }}>{children}</code>
-                  : <code style={{ background: 'rgba(99,102,241,0.15)', color: '#a5b4fc', padding: '1px 5px', borderRadius: 3, fontSize: 12, fontFamily: 'monospace' }}>{children}</code>,
-                pre: ({ children }) => <pre style={{ background: 'rgba(15,23,42,0.8)', borderRadius: 8, padding: 12, fontSize: 12, lineHeight: 1.6, overflowX: 'auto', marginBottom: 12 }}>{children}</pre>,
-              }}
-            >
-              {form.content}
-            </ReactMarkdown>
-          )}
-        </div>
-      ) : (
-        /* EDIT MODE */
-        <div style={{ display: 'grid', gap: 18 }}>
-          {/* Title */}
-          <div>
-            <label className="label">Tiêu đề *</label>
-            <input className={`input ${errors.title ? 'input-error' : ''}`} value={form.title}
-              onChange={(e) => update('title', e.target.value)} placeholder="Ví dụ: Chính sách nghỉ thai sản" />
+      <div className="p-6">
+        {showPreview ? (
+          /* Preview mode */
+          <div className="bg-gray-50 border border-gray-200 rounded-md p-5 min-h-[200px]">
+            <h3 className="text-lg font-bold text-slate-900 mb-4">{form.title || 'Chưa có tiêu đề'}</h3>
+            {form.type === 'Checklist'
+              ? <ChecklistView content={form.content} />
+              : <ReactMarkdown remarkPlugins={[remarkGfm]} components={previewComponents}>{form.content}</ReactMarkdown>
+            }
           </div>
-
-          {/* Type + Audience */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        ) : (
+          /* Edit mode */
+          <div className="space-y-4">
+            {/* Title */}
             <div>
-              <label className="label">Loại bài</label>
-              <select className="input" value={form.type} onChange={(e) => handleTypeChange(e.target.value)} style={{ cursor: 'pointer' }}>
-                <option value="Policy">📋 Policy / SOP</option>
-                <option value="FAQ">❓ FAQ</option>
-                <option value="Checklist">✅ Checklist</option>
-                <option value="Lesson">💡 Bài học kinh nghiệm</option>
-              </select>
+              <label className="label">Tiêu đề *</label>
+              <input
+                className={`input ${errors.title ? 'input-error' : ''}`}
+                value={form.title}
+                onChange={(e) => update('title', e.target.value)}
+                placeholder="Ví dụ: Chính sách nghỉ thai sản"
+              />
             </div>
+
+            {/* Type + Audience */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Loại bài</label>
+                <select
+                  className="input cursor-pointer"
+                  value={form.type}
+                  onChange={(e) => handleTypeChange(e.target.value)}
+                >
+                  <option value="Policy">📋 Policy / SOP</option>
+                  <option value="FAQ">❓ FAQ</option>
+                  <option value="Checklist">✅ Checklist</option>
+                  <option value="Lesson">💡 Bài học kinh nghiệm</option>
+                </select>
+              </div>
+              <div>
+                <label className="label">Đối tượng</label>
+                <input
+                  className="input"
+                  value={form.audience}
+                  onChange={(e) => update('audience', e.target.value)}
+                  placeholder="All employees"
+                />
+              </div>
+            </div>
+
+            {/* Tags */}
             <div>
-              <label className="label">Đối tượng</label>
-              <input className="input" value={form.audience}
-                onChange={(e) => update('audience', e.target.value)} placeholder="All employees" />
+              <label className="label">
+                Tags *{' '}
+                {errors.tags && (
+                  <span className="text-red-500 normal-case font-normal">(chọn ít nhất 1)</span>
+                )}
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {availableTags.map((tag) => {
+                  const color = TAG_COLORS[tag.name] || '#64748b';
+                  const active = form.tags.includes(tag.name);
+                  return (
+                    <button
+                      key={tag.name}
+                      onClick={() => toggleTag(tag.name)}
+                      title={tag.description || ''}
+                      className="px-2.5 py-1 text-xs font-medium rounded border cursor-pointer transition-colors"
+                      style={{
+                        background: active ? `${color}12` : '#fff',
+                        color: active ? color : '#6b7280',
+                        borderColor: active ? `${color}40` : '#e5e7eb',
+                        borderWidth: active ? 2 : 1,
+                      }}
+                    >
+                      {tag.name}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
 
-          {/* Tags */}
-          <div>
-            <label className="label">
-              Tags * {errors.tags && <span style={{ color: 'var(--accent-red)', textTransform: 'none' }}>(chọn ít nhất 1)</span>}
-            </label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {availableTags.map((tag) => {
-                const color = TAG_COLORS[tag.name] || '#94a3b8';
-                const active = form.tags.includes(tag.name);
-                return (
-                  <button key={tag.name} onClick={() => toggleTag(tag.name)} title={tag.description || ''} style={{
-                    padding: '6px 14px', borderRadius: 20, cursor: 'pointer', transition: 'all 0.3s',
-                    border: `2px solid ${active ? color : 'rgba(255,255,255,0.08)'}`,
-                    background: active ? `${color}15` : 'transparent',
-                    color: active ? color : 'var(--text-dim)',
-                    fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-body)',
-                  }}>{tag.name}</button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <label className="label" style={{ margin: 0 }}>Nội dung *</label>
-              {!form.content.trim() && (
-                <button className="btn-ghost" style={{ padding: '3px 10px', fontSize: 11 }}
-                  onClick={() => update('content', TEMPLATES[form.type])}>
-                  📋 Dùng template
-                </button>
+            {/* Content */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="label mb-0">Nội dung *</label>
+                {!form.content.trim() && (
+                  <button
+                    className="btn-ghost text-xs px-2 py-0.5"
+                    onClick={() => update('content', TEMPLATES[form.type])}
+                  >
+                    📋 Dùng template
+                  </button>
+                )}
+              </div>
+              <textarea
+                className={`input font-mono text-xs leading-relaxed resize-y ${errors.content ? 'input-error' : ''}`}
+                value={form.content}
+                onChange={(e) => update('content', e.target.value)}
+                rows={14}
+                placeholder={TEMPLATES[form.type]}
+              />
+              {form.type === 'Checklist' && (
+                <div className="mt-1.5 text-xs text-slate-400">
+                  Mỗi item bắt đầu bằng <code className="bg-slate-100 px-1 rounded">☐</code> hoặc{' '}
+                  <code className="bg-slate-100 px-1 rounded">-</code> hoặc{' '}
+                  <code className="bg-slate-100 px-1 rounded">1.</code>
+                </div>
               )}
             </div>
-            <textarea
-              className={`input ${errors.content ? 'input-error' : ''}`}
-              value={form.content}
-              onChange={(e) => update('content', e.target.value)}
-              rows={12}
-              style={{ resize: 'vertical', lineHeight: 1.7 }}
-              placeholder={TEMPLATES[form.type]}
-            />
-            {form.type === 'Checklist' && (
-              <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-dim)' }}>
-                💡 Mỗi item bắt đầu bằng <code style={{ color: '#4ade80' }}>☐</code> hoặc <code style={{ color: '#4ade80' }}>-</code> hoặc <code style={{ color: '#4ade80' }}>1.</code>
-              </div>
-            )}
-          </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-            <button className="btn-ghost" onClick={onCancel}>Hủy</button>
-            <button className="btn-primary" onClick={handleSubmit} disabled={loading}
-              style={{ opacity: loading ? 0.7 : 1 }}>
-              {loading ? 'Đang lưu...' : editItem ? 'Cập nhật' : isManager ? 'Tạo bài mới' : 'Gửi đề xuất'}
-            </button>
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              <button className="btn-ghost" onClick={onCancel}>Hủy</button>
+              <button
+                className="btn-primary"
+                onClick={handleSubmit}
+                disabled={loading}
+              >
+                {loading ? 'Đang lưu...' : editItem ? 'Cập nhật' : isManager ? 'Tạo bài mới' : 'Gửi đề xuất'}
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

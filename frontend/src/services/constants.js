@@ -3,26 +3,29 @@ export const ALL_TAGS = [
   'tax', 'onboarding', 'working_time', 'behavior',
 ];
 
+// Flat enterprise tag colors — muted, professional
 export const TAG_COLORS = {
-  leave: '#ef4444',
-  benefit: '#3b82f6',
-  contract: '#a855f7',
-  payroll: '#f97316',
-  tax: '#14b8a6',
-  onboarding: '#22c55e',
-  working_time: '#eab308',
-  behavior: '#ec4899',
+  leave:        '#dc2626', // red-600
+  benefit:      '#1d4ed8', // blue-700
+  contract:     '#6d28d9', // violet-700
+  payroll:      '#b45309', // amber-700
+  tax:          '#0f766e', // teal-700
+  onboarding:   '#047857', // emerald-700
+  working_time: '#92400e', // amber-800
+  behavior:     '#be185d', // pink-700
 };
 
+// Enterprise type config — monochromatic, professional
 export const TYPE_CONFIG = {
-  Policy: { icon: '📋', accent: '#3b82f6', glow: '0 0 30px rgba(59,130,246,0.3)' },
-  FAQ: { icon: '❓', accent: '#eab308', glow: '0 0 30px rgba(234,179,8,0.3)' },
-  Checklist: { icon: '✅', accent: '#22c55e', glow: '0 0 30px rgba(34,197,94,0.3)' },
-  Lesson: { icon: '💡', accent: '#f97316', glow: '0 0 30px rgba(249,115,22,0.3)' },
+  Policy:    { icon: '📋', accent: '#1d4ed8' }, // blue-700
+  FAQ:       { icon: '❓', accent: '#b45309' }, // amber-700
+  Checklist: { icon: '✅', accent: '#047857' }, // emerald-700
+  Lesson:    { icon: '💡', accent: '#6d28d9' }, // violet-700
 };
 
+// Role colors — flat enterprise palette
 export const ROLE_COLORS = {
-  ADMIN: { bg: 'rgba(239,68,68,0.12)', color: '#f87171' },
-  MANAGER: { bg: 'rgba(59,130,246,0.12)', color: '#60a5fa' },
-  USER: { bg: 'rgba(34,197,94,0.12)', color: '#4ade80' },
+  ADMIN:   { bg: '#fef2f2', color: '#dc2626' }, // red
+  MANAGER: { bg: '#eff6ff', color: '#1d4ed8' }, // blue
+  USER:    { bg: '#f0fdf4', color: '#15803d' }, // green
 };

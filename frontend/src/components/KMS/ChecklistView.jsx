@@ -1,20 +1,13 @@
 import { useState } from 'react';
 
-/**
- * Interactive checklist renderer.
- * Handles both ☐ prefix AND lines without prefix (treats non-header lines as items).
- * Progress bar tracks checked items.
- */
 export default function ChecklistView({ content }) {
   const [checked, setChecked] = useState({});
   const lines = content.split('\n').filter((l) => l.trim());
 
-  // Detect checklist items: lines starting with ☐, ☑, - , or numbered (1. 2. etc)
   const isCheckItem = (line) => {
     const t = line.trim();
     return t.startsWith('☐') || t.startsWith('☑') || t.startsWith('- ') || /^\d+[\.\)]\s/.test(t);
   };
-
   const isHeader = (line) => {
     const t = line.trim();
     return t === t.toUpperCase() && t.length > 3 && !isCheckItem(line);
@@ -30,20 +23,14 @@ export default function ChecklistView({ content }) {
   return (
     <div>
       {/* Progress bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20,
-        padding: '12px 16px', background: 'rgba(34,197,94,0.08)',
-        borderRadius: 12, border: '1px solid rgba(34,197,94,0.2)',
-      }}>
-        <div style={{ flex: 1, height: 8, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
-          <div style={{
-            width: `${pct}%`, height: '100%',
-            background: 'linear-gradient(90deg,#22c55e,#4ade80)',
-            borderRadius: 99, transition: 'width 0.5s cubic-bezier(0.34,1.56,0.64,1)',
-            boxShadow: '0 0 12px rgba(34,197,94,0.4)',
-          }} />
+      <div className="flex items-center gap-3 mb-5 p-3 bg-emerald-50 border border-emerald-200 rounded-md">
+        <div className="flex-1 h-1.5 bg-emerald-100 rounded overflow-hidden">
+          <div
+            className="h-full bg-emerald-600 rounded transition-all duration-500"
+            style={{ width: `${pct}%` }}
+          />
         </div>
-        <span style={{ fontSize: 13, fontWeight: 800, color: '#4ade80', whiteSpace: 'nowrap' }}>
+        <span className="text-xs font-semibold text-emerald-700 whitespace-nowrap">
           {done}/{total} hoàn thành
         </span>
       </div>
@@ -53,62 +40,59 @@ export default function ChecklistView({ content }) {
         if (isCheckItem(line)) {
           const ci = itemIdx++;
           const text = line.trim()
-            .replace(/^☐\s*/, '')
-            .replace(/^☑\s*/, '')
-            .replace(/^-\s*/, '')
-            .replace(/^\d+[\.\)]\s*/, '');
-
+            .replace(/^☐\s*/, '').replace(/^☑\s*/, '')
+            .replace(/^-\s*/, '').replace(/^\d+[\.\)]\s*/, '');
           return (
-            <label key={i} style={{
-              display: 'flex', alignItems: 'flex-start', gap: 10,
-              padding: '10px 14px', marginBottom: 4, borderRadius: 10,
-              cursor: 'pointer', transition: 'all 0.3s',
-              background: checked[ci] ? 'rgba(34,197,94,0.06)' : 'transparent',
-              border: checked[ci] ? '1px solid rgba(34,197,94,0.15)' : '1px solid transparent',
-            }}>
+            <label
+              key={i}
+              className={`flex items-start gap-2.5 px-3 py-2.5 mb-1 rounded cursor-pointer transition-colors border ${
+                checked[ci]
+                  ? 'bg-emerald-50 border-emerald-200'
+                  : 'bg-white border-transparent hover:border-gray-200'
+              }`}
+            >
               <input
-                type="checkbox" checked={!!checked[ci]}
+                type="checkbox"
+                checked={!!checked[ci]}
                 onChange={() => setChecked((p) => ({ ...p, [ci]: !p[ci] }))}
-                style={{ marginTop: 3, accentColor: '#22c55e', width: 18, height: 18 }}
+                className="mt-0.5 cursor-pointer w-4 h-4 flex-shrink-0"
+                style={{ accentColor: '#047857' }}
               />
-              <span style={{
-                fontSize: 14, lineHeight: 1.7,
-                textDecoration: checked[ci] ? 'line-through' : 'none',
-                color: checked[ci] ? '#6b7280' : '#e5e7eb',
-                transition: 'all 0.3s',
-              }}>{text}</span>
+              <span
+                className={`text-sm leading-relaxed transition-colors ${
+                  checked[ci] ? 'line-through text-slate-400' : 'text-slate-700'
+                }`}
+              >
+                {text}
+              </span>
             </label>
           );
         }
 
-        // Header lines
         if (isHeader(line)) {
           return (
-            <div key={i} style={{
-              fontSize: 15, fontWeight: 800, color: '#4ade80',
-              marginTop: i ? 18 : 0, marginBottom: 8,
-              paddingBottom: 8, borderBottom: '1px solid rgba(34,197,94,0.2)',
-            }}>
+            <div
+              key={i}
+              className="text-xs font-semibold uppercase tracking-wide text-slate-500 mt-5 mb-2 pb-1.5 border-b border-gray-200"
+            >
               {line.trim()}
             </div>
           );
         }
 
-        // Sub-item or description
         if (line.trim()) {
           return (
-            <div key={i} style={{ fontSize: 13, color: '#94a3b8', paddingLeft: 42, lineHeight: 1.6 }}>
+            <div key={i} className="text-xs text-slate-500 pl-9 py-0.5 leading-relaxed">
               {line.trim()}
             </div>
           );
         }
-
         return null;
       })}
 
       {total === 0 && (
-        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>
-          Không tìm thấy checklist items. Nội dung nên bắt đầu mỗi dòng bằng ☐, hoặc -, hoặc 1.
+        <div className="py-8 text-center text-sm text-slate-400">
+          Không tìm thấy checklist items. Mỗi dòng nên bắt đầu bằng ☐, -, hoặc 1.
         </div>
       )}
     </div>
