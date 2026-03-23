@@ -89,6 +89,7 @@ public class ChatService {
 
     private String buildSystemPrompt(List<KnowledgeItem> items) {
         StringBuilder sb = new StringBuilder();
+        sb.append("/no_think\n");
         sb.append("Bạn là trợ lý HR chuyên nghiệp. Hãy trả lời câu hỏi DỰA TRÊN các tài liệu HR được cung cấp bên dưới.\n");
         sb.append("Quy tắc:\n");
         sb.append("- Chỉ trả lời dựa trên nội dung tài liệu. Đừng bịa đặt thông tin.\n");

@@ -71,7 +71,7 @@ export default function App() {
       </main>
 
       <footer className="border-t border-gray-200 bg-white py-3 text-center text-xs text-slate-400">
-        HR Knowledge Hub © 2025 — Spring Boot + React + JWT + PostgreSQL
+        HR Knowledge Hub © 2025
       </footer>
     </div>
   );

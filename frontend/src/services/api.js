@@ -6,6 +6,7 @@
 
 const BASE = import.meta.env.VITE_API_URL || '/api/v1';
 const REQUEST_TIMEOUT_MS = 15000;
+const CHAT_TIMEOUT_MS = 120000;
 
 function getToken() {
   return localStorage.getItem('kms_token');
@@ -18,9 +19,9 @@ function getHeaders() {
   return headers;
 }
 
-async function request(endpoint, options = {}) {
+async function request(endpoint, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   let res;
   try {
@@ -215,7 +216,7 @@ export const chatAPI = {
     return request('/chat', {
       method: 'POST',
       body: JSON.stringify({ message, conversationHistory: history }),
-    });
+    }, CHAT_TIMEOUT_MS);
   },
 };
 

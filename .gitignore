@@ -23,7 +23,7 @@ backend/*.war
 
 # Sensitive config — never commit real secrets
 backend/src/main/resources/application-prod.properties
-backend/src/main/resources/application-local.properties
+backend/src/main/resources/application.properties
 
 # ===== Frontend (Node / Vite) =====
 frontend/node_modules/
@@ -46,3 +46,4 @@ logs/
 *.class
 *.bak
 *.tmp
+.claude

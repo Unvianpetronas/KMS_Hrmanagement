@@ -6,8 +6,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
 
-// Monochromatic emerald palette for charts
-const PIE_COLORS = ['#064e3b', '#047857', '#059669', '#34d399'];
+// Distinct colors per category: Policy, FAQ, Checklist, Lesson
+const PIE_COLORS = ['#1d4ed8', '#b45309', '#047857', '#6d28d9'];
 
 const COUNT_CARDS = [
   { key: 'total',      label: 'Tổng bài',     icon: '📊', color: '#047857' },

@@ -37,7 +37,8 @@ public class LocalAiService implements AiProviderService {
                 "model", model,
                 "messages", messages,
                 "temperature", 0.3,
-                "stream", false
+                "stream", false,
+                "enable_thinking", false
         );
 
         HttpHeaders headers = new HttpHeaders();
@@ -50,7 +51,6 @@ public class LocalAiService implements AiProviderService {
         List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
         Map<String, String> message = (Map<String, String>) choices.get(0).get("message");
         String content = message.get("content");
-        // Strip <think>...</think> block used by reasoning models (e.g. Qwen 3.5)
         int thinkEnd = content.indexOf("</think>");
         if (thinkEnd != -1) {
             content = content.substring(thinkEnd + 8).trim();

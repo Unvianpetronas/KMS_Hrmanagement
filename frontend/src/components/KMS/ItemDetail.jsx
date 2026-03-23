@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
@@ -73,6 +73,11 @@ export default function ItemDetail({ itemId, onBack, onNavigate, onEdit }) {
   const [loading, setLoading] = useState(true);
   const [userRating, setUserRating] = useState(0);
   const [hasRated, setHasRated] = useState(false);
+  const viewRecorded = useRef(false);
+
+  useEffect(() => {
+    viewRecorded.current = false;
+  }, [itemId]);
 
   useEffect(() => {
     setLoading(true);
@@ -81,7 +86,10 @@ export default function ItemDetail({ itemId, onBack, onNavigate, onEdit }) {
         setItem(data);
         setUserRating(myRating.stars || 0);
         setHasRated(myRating.hasRated || false);
-        itemsAPI.recordView(itemId);
+        if (!viewRecorded.current) {
+          viewRecorded.current = true;
+          itemsAPI.recordView(itemId);
+        }
       })
       .catch((err) => notify(err.message, 'error'))
       .finally(() => setLoading(false));
